@@ -1,123 +1,138 @@
-// background.js (Service Worker 脚本，支持实时推送)
+// background.js (Service Worker 脚本，重构为使用 chrome.storage.local 同步数据)
 
-const interceptedImageUrls = [];
+// 使用 chrome.storage 存储数据，但为了快速访问和避免频繁 I/O，
+// 我们仍然在内存中维护核心数据。在扩展程序启动时，可以尝试从 storage 加载。
+
+let interceptedImageUrls = [];
 const MAX_URLS = 100;
 let isCapturing = false;
 
-// **核心：存储所有打开的 popup 窗口的 Port 连接**
-const connectedPorts = new Set();
+// --- 辅助函数：将最新数据和状态写入存储 (取代 pushUpdateToPopups) ---
+function saveAndNotify(urls, capturingState, isListCleared = false) {
+    // 1. 更新内存中的变量
+    interceptedImageUrls = urls;
+    isCapturing = capturingState;
 
-// --- 辅助函数：向所有打开的 popup 推送最新列表 ---
-function pushUpdateToPopups() {
-    connectedPorts.forEach(port => {
-        try {
-            port.postMessage({
-                action: "updateList",
-                urls: interceptedImageUrls
-            });
-        } catch (e) {
-            // 如果发送失败，说明 Port 已失效，将其移除
-            connectedPorts.delete(port);
-        }
+    // 2. 将新值写入存储，这将触发所有打开的 popup 中的 chrome.storage.onChanged
+    chrome.storage.local.set({
+        capturedUrls: interceptedImageUrls,
+        isCapturing: isCapturing
+    });
+    
+    // 如果是清空操作，通常不需要额外通知，因为 capturedUrls: [] 已经触发更新
+}
+
+// --- 初始化/恢复状态：在 Service Worker 启动时尝试加载存储的数据 ---
+function initializeState() {
+    chrome.storage.local.get(['capturedUrls', 'isCapturing'], (result) => {
+        interceptedImageUrls = result.capturedUrls || [];
+        isCapturing = result.isCapturing || false;
+        console.log(`Service Worker loaded state. Capturing: ${isCapturing}, Images: ${interceptedImageUrls.length}`);
     });
 }
+
+// 在 Service Worker 启动时执行初始化
+initializeState();
+
 
 // --- webRequest 监听器：网络层拦截 ---
 chrome.webRequest.onBeforeRequest.addListener(
     function (details) {
-        let wasNewImage = false;
-        // 检查是否在捕获状态，类型是否为图片，并且不是来自扩展程序内部的请求
-        if (isCapturing && details.type === "image" && !details.url.startsWith("chrome-extension://")) {
-            const url = details.url;
-            if (!interceptedImageUrls.includes(url)) {
-                interceptedImageUrls.unshift(url);
-                if (interceptedImageUrls.length > MAX_URLS) {
-                    interceptedImageUrls.pop();
-                }
-                console.log("WebRequest Intercepted:", url);
-                wasNewImage = true;
-            }
+        if (!isCapturing || details.type !== "image" || details.url.startsWith("chrome-extension://")) {
+            return { cancel: false };
         }
+        
+        // 检查非成功响应 (尽管 webRequest 通常只拦截请求，但在某些模式下可能需要)
         if (details.statusCode < 200 || details.statusCode >= 300) {
-            return; // 非成功响应不处理
+            return { cancel: false };
         }
 
-        // 如果捕获到新图片，立即推送更新
+        const url = details.url;
+        let wasNewImage = false;
+
+        if (!interceptedImageUrls.includes(url)) {
+            // 1. 更新列表
+            const newUrls = [url, ...interceptedImageUrls];
+            if (newUrls.length > MAX_URLS) {
+                newUrls.pop();
+            }
+            interceptedImageUrls = newUrls; // 更新内存引用
+            wasNewImage = true;
+            console.log("WebRequest Intercepted:", url);
+        }
+
+        // 2. 如果捕获到新图片，立即保存并通知
         if (wasNewImage) {
-            pushUpdateToPopups();
+            // 立即将新列表保存到存储中
+            saveAndNotify(interceptedImageUrls, isCapturing);
         }
 
         return { cancel: false };
     },
     { urls: ["<all_urls>"] },
-    ["blocking"] // 需要 'webRequestBlocking' 权限
+    ["blocking"]
 );
 
-// --- Port 连接监听器：处理来自 popup 的通信 ---
-chrome.runtime.onConnect.addListener(port => {
-    // 确保是我们的 popup 连接
-    if (port.name !== "popup-channel") return;
+// --- **核心变化**：使用 chrome.runtime.onMessage 监听来自 popup 的请求 ---
+// 这取代了 Port 连接监听器 chrome.runtime.onConnect
 
-    // 1. 添加新的连接
-    connectedPorts.add(port);
-    console.log("Popup connected. Total connections:", connectedPorts.size);
-
-    // 2. 监听来自 popup 的消息
-    port.onMessage.addListener(request => {
-        if (request.action === "getInitialImages") {
-            // 响应初始数据请求
-            port.postMessage({
-                action: "updateList",
-                urls: interceptedImageUrls,
-            });
-            // 发送当前的捕获状态
-            port.postMessage({ action: "toggleStatus", isCapturing: isCapturing });
-
-        } else if (request.action === "toggleCapture") {
-            isCapturing = !isCapturing;
-            // 状态改变，向所有 popup 推送状态更新
-            connectedPorts.forEach(p => p.postMessage({ action: "toggleStatus", isCapturing: isCapturing }));
-
-        } else if (request.action === "clearImages") {
-            interceptedImageUrls.length = 0;
-            // 清空后，向所有 popup 推送清空消息和更新列表
-            connectedPorts.forEach(p => p.postMessage({ action: "cleared" }));
-            pushUpdateToPopups();
-        }
-    });
-
-    // 3. 处理连接断开
-    port.onDisconnect.addListener(() => {
-        connectedPorts.delete(port);
-        console.log("Popup disconnected. Total connections:", connectedPorts.size);
-    });
-});
-
-// --- 接收来自 content.js/injector.js 的数据 (处理非 webRequest 捕获) ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    
+    // ----------------------------------------------------
+    // 处理来自 Popup 的操作请求 (取代 Port.onMessage 监听器中的逻辑)
+    // ----------------------------------------------------
+    if (sender.url && sender.url.includes("popup.html")) {
+        if (request.action === "toggleCapture") {
+            const newCapturingState = !isCapturing;
+            // 状态改变，保存并通知
+            saveAndNotify(interceptedImageUrls, newCapturingState);
+            sendResponse({ success: true, isCapturing: newCapturingState });
+            return true;
+        } 
+        
+        if (request.action === "clearImages") {
+            const emptyUrls = [];
+            // 清空列表，保存并通知
+            saveAndNotify(emptyUrls, isCapturing, true);
+            sendResponse({ success: true });
+            return true;
+        }
+    }
+    
+    // ----------------------------------------------------
+    // 接收来自 content.js/injector.js 的数据 (处理非 webRequest 捕获)
+    // ----------------------------------------------------
     if (request.action === "foundImages") {
         if (!isCapturing) {
-            sendResponse({ success: false });
+            sendResponse({ success: false, reason: "Not capturing" });
             return true;
         }
 
         let wasNewImage = false;
+        
+        // 1. 更新列表
+        const newUrls = [...interceptedImageUrls]; // 复制当前列表
         request.urls.forEach(url => {
-            if (!interceptedImageUrls.includes(url)) {
-                interceptedImageUrls.unshift(url);
-                if (interceptedImageUrls.length > MAX_URLS) {
-                    interceptedImageUrls.pop();
-                }
+            if (!newUrls.includes(url)) {
+                newUrls.unshift(url);
                 wasNewImage = true;
             }
         });
-
-        // 如果捕获到新图片，立即推送更新
+        
+        if (newUrls.length > MAX_URLS) {
+            newUrls.splice(MAX_URLS); // 截断到最大长度
+        }
+        
+        // 2. 如果捕获到新图片，立即保存并通知
         if (wasNewImage) {
-            pushUpdateToPopups();
+            // 使用新列表保存并通知
+            saveAndNotify(newUrls, isCapturing);
         }
 
         sendResponse({ success: true });
         return true;
     }
+    
+    // 必须返回 true 以指示异步响应，即使我们不使用 sendResponse
+    return false;
 });

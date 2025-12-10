@@ -1,4 +1,4 @@
-// popup.js
+// popup.js - 重构为使用 chrome.storage.onChanged 实现数据同步
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- UI 元素获取 ---
@@ -18,15 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // **核心数据结构**
     let selectedUrls = new Set();
     let currentImageUrls = [];
-
-    // **实时通信核心**：与后台的持久连接
-    let port = null;
-
-    // --- 【新增】重连机制变量 ---
-    const MAX_RECONNECT_ATTEMPTS = 5;
-    const RECONNECT_DELAY_MS = 2000; // 2秒后重试
-    let reconnectAttempts = 0;
-    // ----------------------------
+    let isCapturing = false; // 跟踪当前捕获状态
 
     // --- 核心函数：显示无阻塞状态消息 ---
     function displayStatusMessage(message, duration = 3000) {
@@ -51,7 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- 捕获状态按钮更新 ---
-    function updateToggleButton(isCapturing) {
+    function updateToggleButton(capturingState) {
+        isCapturing = capturingState; // 更新本地状态
         if (isCapturing) {
             toggleCaptureButton.textContent = '结束捕获';
             toggleCaptureButton.classList.remove('start-capture');
@@ -102,6 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newlyCapturedUrls = new Set(urls.filter(url => !currentImageUrls.includes(url)));
         currentImageUrls = urls;
 
+        // --- 同步 selectedUrls ---
         if (urls.length === 0) {
             selectedUrls.clear();
         } else {
@@ -159,99 +153,67 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 实时刷新核心：处理后台推送的消息 ---
-    function handleRealtimeUpdate(data) {
-        if (data.action === "updateList") {
-            renderImageList(data.urls);
-        } else if (data.action === "cleared") {
-            renderImageList([]);
-            displayStatusMessage("图片列表已清空。");
-        } else if (data.action === "toggleStatus") {
-            updateToggleButton(data.isCapturing);
-        }
-    }
+    // --- 核心变化：使用 chrome.storage.onChanged 监听数据变化 ---
+    chrome.storage.onChanged.addListener((changes, namespace) => {
+        if (namespace !== 'local') return;
 
-    // --- 初始化：建立连接并请求初始数据 (包含重连机制) ---
-    function initializePopup() {
-        // 如果正在重连，显示状态消息
-        if (reconnectAttempts > 0) {
-            displayStatusMessage(`与后台连接断开，尝试重连... (第 ${reconnectAttempts} 次)`, RECONNECT_DELAY_MS);
-        }
-        
-        try {
-            port = chrome.runtime.connect({ name: "popup-channel" });
-            
-            // 成功连接后，重置重试计数器
-            reconnectAttempts = 0; 
-            
-            port.onMessage.addListener(handleRealtimeUpdate);
-            
-            // --- 重连逻辑 ---
-            port.onDisconnect.addListener(() => {
-                console.warn("Disconnected from background script. Service Worker might have died.");
-                port = null;
-                
-                if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-                    reconnectAttempts++;
-                    // 使用 setTimeout 异步重试连接
-                    setTimeout(initializePopup, RECONNECT_DELAY_MS);
-                } else {
-                    displayStatusMessage("与后台的连接已断开，重试失败。请重新打开面板。", 5000);
-                    reconnectAttempts = 0; // 重置计数器，以便下次打开面板时可以重新尝试
-                }
-            });
-            // ------------------
-            
-            port.postMessage({ action: "getInitialImages" });
-            
-        } catch (e) {
-            console.error("Connection failed immediately:", e);
-            port = null;
-            // 立即连接失败也尝试重连
-            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-                reconnectAttempts++;
-                setTimeout(initializePopup, RECONNECT_DELAY_MS);
-            } else {
-                displayStatusMessage("与后台的连接已断开，重试失败。请重新打开面板。", 5000);
-                reconnectAttempts = 0;
+        if (changes.capturedUrls) {
+            const newUrls = changes.capturedUrls.newValue || [];
+            renderImageList(newUrls);
+            if (newUrls.length === 0 && (changes.capturedUrls.oldValue && changes.capturedUrls.oldValue.length > 0)) {
+                displayStatusMessage("图片列表已清空。");
             }
         }
+
+        if (changes.isCapturing) {
+            updateToggleButton(changes.isCapturing.newValue);
+        }
+    });
+
+    // --- 初始化：获取初始数据 ---
+    function initializePopup() {
+        chrome.storage.local.get(['capturedUrls', 'isCapturing'], (result) => {
+            const urls = result.capturedUrls || [];
+            const capturingState = result.isCapturing || false;
+
+            renderImageList(urls);
+            updateToggleButton(capturingState);
+        });
     }
 
-    // --- 绑定事件监听器 (通过 Port 发送请求) ---
+    // --- 绑定事件监听器 (通过 chrome.runtime.sendMessage 发送请求) ---
 
     selectAllButton.addEventListener('click', selectAllImages);
 
     toggleCaptureButton.addEventListener('click', () => {
-        if (port) {
-            port.postMessage({ action: "toggleCapture" });
-        }
+        // 使用短消息发送请求
+        chrome.runtime.sendMessage({ action: "toggleCapture" })
+            .catch(e => {
+                console.error("Failed to send toggleCapture message:", e);
+                displayStatusMessage("无法连接到后台服务。请重新打开面板。", 4000);
+            });
     });
 
-    // 清空事件：单次点击即执行
     clearImagesButton.addEventListener('click', () => {
-        if (port) {
-            port.postMessage({ action: "clearImages" });
-            displayStatusMessage("正在清空图片列表...", 1000);
-        } else {
-            displayStatusMessage("后台服务未连接，请重新打开面板。", 4000);
-        }
+        displayStatusMessage("正在清空图片列表...", 1000);
+        // 使用短消息发送请求
+        chrome.runtime.sendMessage({ action: "clearImages" })
+            .catch(e => {
+                console.error("Failed to send clearImages message:", e);
+                displayStatusMessage("无法连接到后台服务。请重新打开面板。", 4000);
+            });
     });
+
+    // 以下为下载和复制逻辑，它们不需要修改，因为它们只使用本地数据 selectedUrls
 
     // --- 辅助函数：将 Blob 转换为目标格式的 Blob ---
-    /**
-     * 使用 Canvas API 将图像 Blob 转换为指定格式 (PNG, JPEG)
-     * @param {Blob} originalBlob 原始图片 Blob
-     * @param {string} targetFormat 目标格式 ('png', 'jpeg')
-     * @returns {Promise<Blob>} 转换后的 Blob
-     */
     function convertToTargetFormat(originalBlob, targetFormat) {
         return new Promise((resolve, reject) => {
             const img = new Image();
             const url = URL.createObjectURL(originalBlob);
 
             img.onload = () => {
-                URL.revokeObjectURL(url); // 释放 Blob URL
+                URL.revokeObjectURL(url);
                 const canvas = document.createElement('canvas');
                 canvas.width = img.width;
                 canvas.height = img.height;
@@ -259,7 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0);
 
-                // 确定 MIME 类型和质量 (仅对 JPEG/WebP 有效)
                 let mimeType;
                 if (targetFormat === 'png') {
                     mimeType = 'image/png';
@@ -270,7 +231,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                // 导出为目标格式 (JPEG 质量设为 0.9，其他格式忽略质量参数)
                 canvas.toBlob(resolve, mimeType, 0.9);
             };
 
@@ -283,7 +243,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 【修改核心】多选下载功能：改为 ZIP 压缩包下载 (集成格式转换) ---
+    // --- 辅助函数：根据 Blob 的 Content-Type 确定扩展名 ---
+    function getExtensionFromMime(mimeType) {
+        if (!mimeType) return '';
+        const mimeMap = {
+            'image/jpeg': 'jpeg',
+            'image/png': 'png',
+            'image/gif': 'gif',
+            'image/webp': 'webp',
+            'image/svg+xml': 'svg'
+        };
+        // 移除 Content-Type 后的字符集信息 (如 image/jpeg;charset=utf-8)
+        const cleanType = mimeType.split(';')[0].toLowerCase();
+        return mimeMap[cleanType] || ''; // 返回格式名 (如 'jpeg' 或 '')
+    }
+
+    // --- 多选下载功能：改为 ZIP 压缩包下载 (集成格式转换) ---
     downloadButton.addEventListener('click', async () => {
         if (selectedUrls.size === 0) return;
 
@@ -294,48 +269,73 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetFormat = formatSelect.value;
 
         displayStatusMessage(`正在准备下载 ${totalCount} 张图片，请稍候...`, 10000);
-        downloadButton.disabled = true; // 禁用按钮防止重复点击
+        downloadButton.disabled = true;
 
         for (const url of urls) {
             try {
-                // 1. 使用 fetch 获取 Blob 数据
+                // --- 1. 使用 fetch 获取 Blob 数据并记录 Content-Type ---
                 const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
                 }
+
+                // 获取 Content-Type（服务器的权威信息）
+                const contentType = response.headers.get('content-type') || response.blob().type;
+                let originalFormatName = getExtensionFromMime(contentType); // 例如 'jpeg', 'png', 或 ''
+
                 let blob = await response.blob();
 
-                // 2. 【新增】：处理格式转换
+                // 2. 【核心修改】处理格式转换
                 let newExtension = '';
                 let isConverted = false;
 
+                // 如果 originalFormatName 为空，先使用 Blob 对象的 type，但它可能不准
+                const currentMime = originalFormatName || (blob.type ? blob.type.split('/')[1] : '');
+
                 if (targetFormat !== 'original') {
-                    // 如果目标格式与原始 MIME 类型不匹配，则进行转换
-                    const originalMime = blob.type.split('/')[1];
-                    if (originalMime !== targetFormat) {
+                    if (currentMime !== targetFormat) {
                         blob = await convertToTargetFormat(blob, targetFormat);
                         newExtension = `.${targetFormat}`;
                         isConverted = true;
                     }
+                } else {
+                    // 如果是 'original'，但 originalFormatName 为空 (如动态链接)，
+                    // 尝试用一个默认的格式名来帮助生成文件名。
+                    if (!originalFormatName) {
+                        originalFormatName = 'jpg'; // 动态链接若不能识别，假定为 jpg
+                    }
                 }
-
 
                 // 3. 获取文件名并处理扩展名
                 const urlParts = url.split('/');
                 let filename = urlParts[urlParts.length - 1].split('?')[0];
 
                 if (!filename || filename.indexOf('.') === -1) {
-                    // 创建通用文件名，使用新的或原始的扩展名
-                    const defaultExt = newExtension || (url.includes('.') ? url.substring(url.lastIndexOf('.')) : '.jpg');
+                    // 【核心修改】：无扩展名时
+                    // 优先使用转换后的扩展名 newExtension
+                    // 如果没有转换 (targetFormat === 'original')，
+                    // 则使用从 MIME Type 推断出的 originalFormatName (如 'jpeg')
+
+                    let defaultExt = newExtension;
+                    if (!defaultExt) {
+                        // 如果没有 newExtension，使用 MIME 推断的扩展名
+                        defaultExt = `.${originalFormatName}`;
+                    }
+
+                    // 最终确保有一个扩展名，如果推断也失败了，默认为 .png
+                    if (defaultExt === '.') {
+                        defaultExt = '.jpg';
+                    }
+
                     filename = `image_${downloadedCount + 1}${defaultExt}`;
                 } else if (isConverted) {
-                    // 如果进行了转换，替换或添加新的扩展名
+                    // 如果文件名存在且已转换
                     const parts = filename.split('.');
                     parts.pop(); // 移除原始扩展名
                     filename = `${parts.join('.')}${newExtension}`;
                 }
 
-                // 4. 确保文件名是唯一的
+                // 4. 确保文件名是唯一的 (保持不变)
                 const originalFilename = filename;
                 let fileCounter = 1;
                 while (zip.files[filename]) {
@@ -345,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     filename = `${name}_${fileCounter++}.${ext}`;
                 }
 
-                // 5. 将处理后的 Blob 添加到 ZIP 文件中
+                // 5. 将处理后的 Blob 添加到 ZIP 文件中 (保持不变)
                 zip.file(filename, blob, { binary: true });
                 downloadedCount++;
 
@@ -356,14 +356,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // 6. 生成 ZIP 文件并下载
+        // 6. 生成 ZIP 文件并下载 (保持不变)
         if (downloadedCount > 0) {
             displayStatusMessage(`正在压缩...`, 10000);
             const zipBlob = await zip.generateAsync({ type: "blob" });
 
-            const zipName = `images_${new Date().toISOString().slice(0, 10)}.zip`;
+            const zipName = `images_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.zip`;
 
-            // 使用 file-saver 库或简单创建链接下载
             const a = document.createElement('a');
             a.href = URL.createObjectURL(zipBlob);
             a.download = zipName;
@@ -411,5 +410,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 初始化调用
     initializePopup();
 });

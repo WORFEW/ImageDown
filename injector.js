@@ -4,10 +4,32 @@
 
     // --- 辅助函数：判断是否为图片URL ---
     function isImageUrl(url) {
-        if (!url || typeof url !== 'string') return false;
-        // 简单的启发式判断
-        const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i;
-        return imageExtensions.test(url) || url.includes('image') || url.includes('img');
+        if (!url || typeof url !== 'string' || !url.startsWith('http')) return false;
+
+        // 清理 URL，移除查询参数和哈希，转为小写进行匹配
+        const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
+
+        // --- 1. 黑名单排除 ---
+        // 明确排除常见的非图片文件扩展名
+        const blacklistExtensions = /\.(json|xml|html|js|css|txt)(\?.*)?$/i;
+        if (blacklistExtensions.test(cleanUrl)) {
+            return false; // 明确排除 JSON, JS, CSS 等文件
+        }
+
+        // --- 2. 白名单/启发式判断 ---
+        // A) 图片扩展名白名单
+        const imageExtensions = /\.(jpg|jpeg|png|webp|svg|bmp)(\?.*)?$/i;
+        if (imageExtensions.test(cleanUrl)) {
+            return true;
+        }
+
+        // B) 启发式关键词（作为后备）
+        // 只有在扩展名不明确时，才依赖关键词
+        if (cleanUrl.includes('image') || cleanUrl.includes('img')) {
+            return true;
+        }
+
+        return false;
     }
 
     // --- 通知内容脚本（通过自定义事件）---
@@ -33,21 +55,26 @@
     // --- 2. 劫持 XMLHttpRequest ---
     const originalXHRopen = XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open = function (method, url) {
-        // 在 open 阶段捕获 URL
-        if (isImageUrl(url)) {
-            // 注意：此时只能获取 URL，请求类型需要在 send 后判断
-            notifyContentScript(url);
+        let absoluteUrl = url;
+
+        // 1. 将相对 URL 转换为绝对 URL，并保存到 XHR 实例上
+        try {
+            absoluteUrl = new URL(url, window.location.href).href;
+        } catch (e) {
+            absoluteUrl = url;
         }
 
-        // 绑定事件监听器，也可以在请求完成后进一步检查响应类型
+        this._interceptedUrl = absoluteUrl;
+
+        // 2. 绑定事件监听器，在请求完成时进行状态码过滤
         this.addEventListener('load', function () {
             if (this.status >= 200 && this.status < 300) {
-                // 如果请求成功且 URL 仍未被 webRequest 捕获，则可以再次确认
-                // 但为了避免重复，我们依赖 open 时的 URL 启发式判断。
+                const finalUrl = this._interceptedUrl;
+                if (isImageUrl(finalUrl)) {
+                    notifyContentScript(finalUrl);
+                }
             }
         });
-
-        // 调用原始的 open 方法
         return originalXHRopen.apply(this, arguments);
     };
 
