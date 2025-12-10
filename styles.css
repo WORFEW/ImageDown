@@ -1,11 +1,18 @@
 /* styles.css */
 
 body {
-    width: 380px; /* 增加宽度以容纳更多按钮 */
+    width: 370px; /* 增加宽度以容纳更多按钮 */
     min-height: 200px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    padding: 15px;
+    padding: 10px 15px;
     background-color: #f7f7f7;
+}
+
+label {
+    font-size: 1.2em; /* 统一增大字体大小 */
+    color: #333;
+    font-weight: bold;
+    white-space: nowrap;
 }
 
 h2 {
@@ -126,19 +133,20 @@ h2 {
     flex-grow: 1; /* 让选择框占据更多空间 */
 }
 
+#urlLimit {
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    flex-grow: 1; /* 让选择框占据更多空间 */
+}
+
 /* 默认按钮样式 */
 #action-bar button {
-    padding: 8px 10px;
+    padding: 6px 10px;
     border: none;
-    border-radius: 4px;
+    border-radius: 3px;
     cursor: pointer;
     font-size: 0.9em;
-    transition: background-color 0.2s;
-    background-color: #f0f0f0; 
-    color: #333;
-}
-#action-bar button:hover:not(:disabled) {
-    background-color: #ddd;
 }
 #action-bar button:disabled {
     cursor: not-allowed;
@@ -150,8 +158,17 @@ h2 {
     background-color: #4CAF50;
     color: white;
 }
-#download-selected:hover:not(:disabled) {
-    background-color: #45a049;
+#copy-link-selected{
+    background-color: #673ab7; /* 紫色 */
+    color: white;
+}
+#clear-images {
+    background-color: #ff9800; /* 橙色 */
+    color: white;
+}
+#saveLimit {
+    background-color: #4CAF50;
+    color: white;
 }
 
 /* 全选按钮 */

@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearImagesButton = document.getElementById('clear-images');
     const statusMessageElement = document.getElementById('status-message');
     const selectAllButton = document.getElementById('select-all');
+    const urlLimitInput = document.getElementById('urlLimit');
+    const saveLimitButton = document.getElementById('saveLimit');
 
     // **核心数据结构**
     let selectedUrls = new Set();
@@ -21,9 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let isCapturing = false; // 跟踪当前捕获状态
 
     // --- 核心函数：显示无阻塞状态消息 ---
-    function displayStatusMessage(message, duration = 3000) {
+    function displayStatusMessage(message, duration = 3000, color = 'green') {
         clearTimeout(statusMessageElement.dataset.timeoutId);
-
+        
+        limitStatusMessage.style.color = color;
         statusMessageElement.textContent = message;
         statusMessageElement.classList.add('visible');
 
@@ -168,16 +171,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (changes.isCapturing) {
             updateToggleButton(changes.isCapturing.newValue);
         }
+        // 新增：监听 MAX_URLS 限制的变化，并更新输入框
+        if (changes.maxUrlsLimit) {
+            urlLimitInput.value = changes.maxUrlsLimit.newValue;
+        }
     });
 
     // --- 初始化：获取初始数据 ---
     function initializePopup() {
-        chrome.storage.local.get(['capturedUrls', 'isCapturing'], (result) => {
+        chrome.storage.local.get(['capturedUrls', 'isCapturing', 'maxUrlsLimit'], (result) => {
             const urls = result.capturedUrls || [];
             const capturingState = result.isCapturing || false;
+            const limitValue = result.maxUrlsLimit || 100; // 默认值 100
 
             renderImageList(urls);
             updateToggleButton(capturingState);
+            urlLimitInput.value = limitValue;
         });
     }
 
@@ -190,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.runtime.sendMessage({ action: "toggleCapture" })
             .catch(e => {
                 console.error("Failed to send toggleCapture message:", e);
-                displayStatusMessage("无法连接到后台服务。请重新打开面板。", 4000);
+                displayStatusMessage("无法连接到后台服务。请重新打开面板。", 4000, 'red');
             });
     });
 
@@ -200,13 +209,30 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.runtime.sendMessage({ action: "clearImages" })
             .catch(e => {
                 console.error("Failed to send clearImages message:", e);
-                displayStatusMessage("无法连接到后台服务。请重新打开面板。", 4000);
+                displayStatusMessage("无法连接到后台服务。请重新打开面板", 4000, 'red');
             });
+    });
+
+    // 新增：MAX_URLS 保存事件
+    saveLimitButton.addEventListener('click', () => {
+        const newLimit = parseInt(urlLimitInput.value, 10);
+
+        // 向 Service Worker 发送消息以保存新限制
+        chrome.runtime.sendMessage({
+            action: "setMaxUrls",
+            limit: newLimit
+        }, (response) => {
+            if (response.success){
+                displayStatusMessage(`最大 URL 数量限制已设置为 ${newLimit}`);
+            } else {
+                displayStatusMessage(`设置失败: ${response.reason}`, 4000, 'red');
+            }
+        });
     });
 
     // 以下为下载和复制逻辑，它们不需要修改，因为它们只使用本地数据 selectedUrls
 
-    // --- 辅助函数：将 Blob 转换为目标格式的 Blob ---
+    // --- 辅助函数：将图片 Blob 转换为目标格式 ---
     function convertToTargetFormat(originalBlob, targetFormat) {
         return new Promise((resolve, reject) => {
             const img = new Image();

@@ -4,19 +4,21 @@
 // 仍然在内存中维护核心数据。在扩展程序启动时，可以尝试从 storage 加载。
 
 let interceptedImageUrls = [];
-const MAX_URLS = 100;
+let maxUrlsLimit = 100; // 新增：最大 URL 数量限制
 let isCapturing = false;
 
 // --- 辅助函数：将最新数据和状态写入存储 (取代 pushUpdateToPopups) ---
-function saveAndNotify(urls, capturingState, isListCleared = false) {
+function saveAndNotify(urls, capturingState, newLimit = maxUrlsLimit, isListCleared = false) {
     // 1. 更新内存中的变量
     interceptedImageUrls = urls;
     isCapturing = capturingState;
+    maxUrlsLimit = newLimit;
 
     // 2. 将新值写入存储，这将触发所有打开的 popup 中的 chrome.storage.onChanged
     chrome.storage.local.set({
         capturedUrls: interceptedImageUrls,
-        isCapturing: isCapturing
+        isCapturing: isCapturing,
+        maxUrlsLimit: maxUrlsLimit // 新增：将限制值写入存储
     });
     
     // 如果是清空操作，通常不需要额外通知，因为 capturedUrls: [] 已经触发更新
@@ -27,7 +29,8 @@ function initializeState() {
     chrome.storage.local.get(['capturedUrls', 'isCapturing'], (result) => {
         interceptedImageUrls = result.capturedUrls || [];
         isCapturing = result.isCapturing || false;
-        console.log(`初始化状态, 捕获状态: ${isCapturing}, 图片数量: ${interceptedImageUrls.length}`);
+        maxUrlsLimit = result.maxUrlsLimit || 100; // 新增：加载限制值，默认 100
+        console.log(`初始化状态, 捕获状态: ${isCapturing}, 图片数量: ${interceptedImageUrls.length} , 最大限制: ${maxUrlsLimit}`);
     });
 }
 
@@ -48,7 +51,7 @@ chrome.webRequest.onBeforeRequest.addListener(
         if (!interceptedImageUrls.includes(url)) {
             // 1. 更新列表
             const newUrls = [url, ...interceptedImageUrls];
-            if (newUrls.length > MAX_URLS) {
+            if (newUrls.length > maxUrlsLimit) {
                 newUrls.pop();
             }
             interceptedImageUrls = newUrls; // 更新内存引用
@@ -113,8 +116,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
         });
         
-        if (newUrls.length > MAX_URLS) {
-            newUrls.splice(MAX_URLS); // 截断到最大长度
+        if (newUrls.length > maxUrlsLimit) {
+            newUrls.splice(maxUrlsLimit); // 截断到最大长度
         }
         
         // 2. 如果捕获到新图片，立即保存并通知
@@ -124,6 +127,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
 
         sendResponse({ success: true });
+        return true;
+    }
+    // ----------------------------------------------------
+    // 处理设置最大 URL 数量限制的请求
+    // ----------------------------------------------------
+    if (request.action === "setMaxUrls") {
+        const newLimit = parseInt(request.limit, 10);
+        
+        // 校验输入
+        if (!isNaN(newLimit) && newLimit > 100 && newLimit < 1000) { // 限制一个合理的最大值
+            // 仅更新限制，不修改图片列表
+            saveAndNotify(interceptedImageUrls, isCapturing, newLimit);
+            sendResponse({ success: true, newLimit: newLimit });
+        } else {
+            sendResponse({ success: false, reason: "最大限制值无效或超出范围, 限制为 100 到 1000" });
+        }
         return true;
     }
     
