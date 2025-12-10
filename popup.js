@@ -2,17 +2,17 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- 【变通方案】阻止 Popup 自动关闭的尝试 ---
-    const wrapper = document.getElementById('content-wrapper'); 
+    const wrapper = document.getElementById('content-wrapper');
     if (wrapper) {
         wrapper.addEventListener('mousedown', (e) => {
-            e.stopPropagation(); 
+            e.stopPropagation();
         });
         wrapper.addEventListener('click', (e) => {
-            e.stopPropagation(); 
+            e.stopPropagation();
         });
     }
     // ---------------------------------------------
-    
+
     // --- UI 元素获取 ---
     const imageListContainer = document.getElementById('image-list-container');
     const toggleCaptureButton = document.getElementById('toggle-capture');
@@ -37,14 +37,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 核心函数：显示无阻塞状态消息 ---
     function displayStatusMessage(message, duration = 3000) {
         clearTimeout(statusMessageElement.dataset.timeoutId);
-        
+
         statusMessageElement.textContent = message;
         statusMessageElement.classList.add('visible');
 
         const timeoutId = setTimeout(() => {
             statusMessageElement.classList.remove('visible');
         }, duration);
-        
+
         statusMessageElement.dataset.timeoutId = timeoutId;
     }
 
@@ -104,12 +104,12 @@ document.addEventListener('DOMContentLoaded', () => {
         imageListContainer.innerHTML = '';
         const count = urls.length;
         imageCountTitle.textContent = `已捕获的图片 (${count} 张)`;
-        
+
         const newlyCapturedUrls = new Set(urls.filter(url => !currentImageUrls.includes(url)));
         currentImageUrls = urls;
-        
+
         if (urls.length === 0) {
-             selectedUrls.clear();
+            selectedUrls.clear();
         } else {
             const newSelection = new Set();
             urls.forEach(url => {
@@ -129,14 +129,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         urls.forEach(url => {
             const imgWrapper = document.createElement('div');
-            
+
             if (selectedUrls.has(url)) {
                 imgWrapper.classList.add('selected');
             }
-            
+
             imgWrapper.classList.add('image-item');
             imgWrapper.dataset.url = url;
-            
+
             if (newlyCapturedUrls.has(url)) {
                 imgWrapper.classList.add('newly-captured');
                 setTimeout(() => imgWrapper.classList.remove('newly-captured'), 500);
@@ -204,13 +204,58 @@ document.addEventListener('DOMContentLoaded', () => {
     clearImagesButton.addEventListener('click', () => {
         if (port) {
             port.postMessage({ action: "clearImages" });
-            displayStatusMessage("正在清空图片列表...", 1000); 
+            displayStatusMessage("正在清空图片列表...", 1000);
         } else {
             displayStatusMessage("后台服务未连接，请重新打开面板。", 4000);
         }
     });
 
-    // --- 【修改核心】多选下载功能：改为 ZIP 压缩包下载 ---
+    // --- 辅助函数：将 Blob 转换为目标格式的 Blob ---
+    /**
+     * 使用 Canvas API 将图像 Blob 转换为指定格式 (PNG, JPEG)
+     * @param {Blob} originalBlob 原始图片 Blob
+     * @param {string} targetFormat 目标格式 ('png', 'jpeg')
+     * @returns {Promise<Blob>} 转换后的 Blob
+     */
+    function convertToTargetFormat(originalBlob, targetFormat) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            const url = URL.createObjectURL(originalBlob);
+
+            img.onload = () => {
+                URL.revokeObjectURL(url); // 释放 Blob URL
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                // 确定 MIME 类型和质量 (仅对 JPEG/WebP 有效)
+                let mimeType;
+                if (targetFormat === 'png') {
+                    mimeType = 'image/png';
+                } else if (targetFormat === 'jpeg') {
+                    mimeType = 'image/jpeg';
+                } else {
+                    reject(new Error(`Unsupported target format: ${targetFormat}`));
+                    return;
+                }
+
+                // 导出为目标格式 (JPEG 质量设为 0.9，其他格式忽略质量参数)
+                canvas.toBlob(resolve, mimeType, 0.9);
+            };
+
+            img.onerror = () => {
+                URL.revokeObjectURL(url);
+                reject(new Error("Failed to load image onto canvas for conversion."));
+            };
+
+            img.src = url;
+        });
+    }
+
+    // --- 【修改核心】多选下载功能：改为 ZIP 压缩包下载 (集成格式转换) ---
     downloadButton.addEventListener('click', async () => {
         if (selectedUrls.size === 0) return;
 
@@ -218,24 +263,51 @@ document.addEventListener('DOMContentLoaded', () => {
         const zip = new JSZip();
         let downloadedCount = 0;
         const totalCount = urls.length;
-        
+        const targetFormat = formatSelect.value;
+
         displayStatusMessage(`正在准备下载 ${totalCount} 张图片，请稍候...`, 10000);
         downloadButton.disabled = true; // 禁用按钮防止重复点击
-        
+
         for (const url of urls) {
             try {
-                // 1. 获取文件名：从 URL 路径获取，或使用递增数字
+                // 1. 使用 fetch 获取 Blob 数据
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
+                }
+                let blob = await response.blob();
+
+                // 2. 【新增】：处理格式转换
+                let newExtension = '';
+                let isConverted = false;
+
+                if (targetFormat !== 'original') {
+                    // 如果目标格式与原始 MIME 类型不匹配，则进行转换
+                    const originalMime = blob.type.split('/')[1];
+                    if (originalMime !== targetFormat) {
+                        blob = await convertToTargetFormat(blob, targetFormat);
+                        newExtension = `.${targetFormat}`;
+                        isConverted = true;
+                    }
+                }
+
+
+                // 3. 获取文件名并处理扩展名
                 const urlParts = url.split('/');
                 let filename = urlParts[urlParts.length - 1].split('?')[0];
+
                 if (!filename || filename.indexOf('.') === -1) {
-                    // 如果文件名无效或没有扩展名，则创建通用文件名
-                    const ext = (formatSelect.value === 'original' && url.includes('.')) 
-                        ? url.substring(url.lastIndexOf('.')) 
-                        : '.jpg'; // 默认扩展名
-                    filename = `image_${downloadedCount + 1}${ext}`;
+                    // 创建通用文件名，使用新的或原始的扩展名
+                    const defaultExt = newExtension || (url.includes('.') ? url.substring(url.lastIndexOf('.')) : '.jpg');
+                    filename = `image_${downloadedCount + 1}${defaultExt}`;
+                } else if (isConverted) {
+                    // 如果进行了转换，替换或添加新的扩展名
+                    const parts = filename.split('.');
+                    parts.pop(); // 移除原始扩展名
+                    filename = `${parts.join('.')}${newExtension}`;
                 }
-                
-                // 确保文件名是唯一的 (如果有重复的 URL，虽然 Set 阻止了，但不同页面的相同资源可能有同名)
+
+                // 4. 确保文件名是唯一的
                 const originalFilename = filename;
                 let fileCounter = 1;
                 while (zip.files[filename]) {
@@ -245,17 +317,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     filename = `${name}_${fileCounter++}.${ext}`;
                 }
 
-                // 2. 使用 fetch 获取 Blob 数据
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
-                }
-                const blob = await response.blob();
-                
-                // 3. 将 Blob 添加到 ZIP 文件中
+                // 5. 将处理后的 Blob 添加到 ZIP 文件中
                 zip.file(filename, blob, { binary: true });
                 downloadedCount++;
-                
+
                 displayStatusMessage(`已打包 ${downloadedCount} / ${totalCount} 张图片...`, 500);
 
             } catch (error) {
@@ -263,34 +328,29 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // 6. 生成 ZIP 文件并下载
         if (downloadedCount > 0) {
-            // 4. 生成 ZIP 文件
-            displayStatusMessage('正在生成压缩包...', 10000);
+            displayStatusMessage(`正在压缩...`, 10000);
             const zipBlob = await zip.generateAsync({ type: "blob" });
-            
-            // 5. 触发下载
-            const zipFilename = `captured_images_${Date.now()}.zip`;
-            const zipUrl = URL.createObjectURL(zipBlob);
 
-            chrome.downloads.download({
-                url: zipUrl,
-                filename: zipFilename,
-                saveAs: true // 允许用户选择保存位置
-            }, () => {
-                // 清理 Blob URL
-                URL.revokeObjectURL(zipUrl);
-                displayStatusMessage(`ZIP 压缩包 (${downloadedCount} 张) 已开始下载。`, 5000);
-                downloadButton.disabled = false; // 恢复按钮
-                updateActionButtons(); // 确保按钮状态正确
-            });
+            const zipName = `images_${new Date().toISOString().slice(0, 10)}.zip`;
 
+            // 使用 file-saver 库或简单创建链接下载 (假设您使用了简单的 Blob URL 下载)
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(zipBlob);
+            a.download = zipName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+
+            displayStatusMessage(`成功下载 ${downloadedCount} 张图片！`, 3000);
         } else {
-            displayStatusMessage("没有图片成功下载或打包。", 3000);
-            downloadButton.disabled = false;
+            displayStatusMessage(`下载失败，没有图片被成功打包。`, 5000);
         }
-    });
-    // -------------------------------------------------------------
 
+        downloadButton.disabled = false;
+    });
 
     // --- 多选复制功能 ---
     copyButton.addEventListener('click', () => {
