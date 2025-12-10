@@ -1,18 +1,6 @@
-// popup.js (完整的客户端交互逻辑，修改为 ZIP 下载)
+// popup.js
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 【变通方案】阻止 Popup 自动关闭的尝试 ---
-    const wrapper = document.getElementById('content-wrapper');
-    if (wrapper) {
-        wrapper.addEventListener('mousedown', (e) => {
-            e.stopPropagation();
-        });
-        wrapper.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
-    }
-    // ---------------------------------------------
-
     // --- UI 元素获取 ---
     const imageListContainer = document.getElementById('image-list-container');
     const toggleCaptureButton = document.getElementById('toggle-capture');
@@ -33,6 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // **实时通信核心**：与后台的持久连接
     let port = null;
+
+    // --- 【新增】重连机制变量 ---
+    const MAX_RECONNECT_ATTEMPTS = 5;
+    const RECONNECT_DELAY_MS = 2000; // 2秒后重试
+    let reconnectAttempts = 0;
+    // ----------------------------
 
     // --- 核心函数：显示无阻塞状态消息 ---
     function displayStatusMessage(message, duration = 3000) {
@@ -174,20 +168,54 @@ document.addEventListener('DOMContentLoaded', () => {
             displayStatusMessage("图片列表已清空。");
         } else if (data.action === "toggleStatus") {
             updateToggleButton(data.isCapturing);
-            displayStatusMessage(message);
         }
     }
 
-    // --- 初始化：建立连接并请求初始数据 ---
+    // --- 初始化：建立连接并请求初始数据 (包含重连机制) ---
     function initializePopup() {
-        port = chrome.runtime.connect({ name: "popup-channel" });
-        port.onMessage.addListener(handleRealtimeUpdate);
-        port.onDisconnect.addListener(() => {
-            console.warn("Disconnected from background script. Service Worker might have died.");
+        // 如果正在重连，显示状态消息
+        if (reconnectAttempts > 0) {
+            displayStatusMessage(`与后台连接断开，尝试重连... (第 ${reconnectAttempts} 次)`, RECONNECT_DELAY_MS);
+        }
+        
+        try {
+            port = chrome.runtime.connect({ name: "popup-channel" });
+            
+            // 成功连接后，重置重试计数器
+            reconnectAttempts = 0; 
+            
+            port.onMessage.addListener(handleRealtimeUpdate);
+            
+            // --- 重连逻辑 ---
+            port.onDisconnect.addListener(() => {
+                console.warn("Disconnected from background script. Service Worker might have died.");
+                port = null;
+                
+                if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                    reconnectAttempts++;
+                    // 使用 setTimeout 异步重试连接
+                    setTimeout(initializePopup, RECONNECT_DELAY_MS);
+                } else {
+                    displayStatusMessage("与后台的连接已断开，重试失败。请重新打开面板。", 5000);
+                    reconnectAttempts = 0; // 重置计数器，以便下次打开面板时可以重新尝试
+                }
+            });
+            // ------------------
+            
+            port.postMessage({ action: "getInitialImages" });
+            
+        } catch (e) {
+            console.error("Connection failed immediately:", e);
             port = null;
-            displayStatusMessage("与后台的连接已断开，请重新打开面板。", 5000);
-        });
-        port.postMessage({ action: "getInitialImages" });
+            // 立即连接失败也尝试重连
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                reconnectAttempts++;
+                setTimeout(initializePopup, RECONNECT_DELAY_MS);
+            } else {
+                displayStatusMessage("与后台的连接已断开，重试失败。请重新打开面板。", 5000);
+                reconnectAttempts = 0;
+            }
+        }
     }
 
     // --- 绑定事件监听器 (通过 Port 发送请求) ---
@@ -335,7 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const zipName = `images_${new Date().toISOString().slice(0, 10)}.zip`;
 
-            // 使用 file-saver 库或简单创建链接下载 (假设您使用了简单的 Blob URL 下载)
+            // 使用 file-saver 库或简单创建链接下载
             const a = document.createElement('a');
             a.href = URL.createObjectURL(zipBlob);
             a.download = zipName;
