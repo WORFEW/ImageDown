@@ -1,4 +1,4 @@
-// background.js (Service Worker 脚本，重构为使用 chrome.storage.local 同步数据)
+// background.js 使用 chrome.storage.local 同步数据
 
 // 使用 chrome.storage 存储数据，但为了快速访问和避免频繁 I/O，
 // 我们仍然在内存中维护核心数据。在扩展程序启动时，可以尝试从 storage 加载。
