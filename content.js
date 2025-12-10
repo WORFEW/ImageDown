@@ -67,7 +67,7 @@ function findAndSendImageUrls() {
                 urls: urls
             });
         }
-    }, 100); // 去抖动延迟 100ms
+    }, 10); // 去抖动延迟 10 毫秒
 }
 
 
