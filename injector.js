@@ -32,6 +32,18 @@
         return false;
     }
 
+    // --- 辅助函数：Content-Type 检查 ---
+    function isImageContentType(contentType) {
+        if (!contentType) return false;
+        const cleanType = contentType.split(';')[0].toLowerCase();
+        // 排除 text/html, application/json 等明确的非图片类型
+        if (cleanType.includes('text/') || cleanType.includes('application/json')) {
+            return false;
+        }
+        // 检查是否为 image/*
+        return cleanType.startsWith('image/');
+    }
+
     // --- 通知内容脚本（通过自定义事件）---
     function notifyContentScript(url) {
         // 使用 window 上的自定义事件通信，因为 injector.js 和 content.js 运行在不同的作用域
@@ -67,14 +79,26 @@
         this._interceptedUrl = absoluteUrl;
 
         // 2. 绑定事件监听器，在请求完成时进行状态码过滤
-        this.addEventListener('load', function () {
-            if (this.status >= 200 && this.status < 300) {
-                const finalUrl = this._interceptedUrl;
-                if (isImageUrl(finalUrl)) {
-                    notifyContentScript(finalUrl);
-                }
+        this.onload = function () {
+            const finalUrl = this._interceptedUrl;
+
+            // 核心过滤 1: 检查 HTTP 状态码 (仅处理 2xx 成功响应)
+            if (this.status < 200 || this.status >= 300) {
+                return;
             }
-        });
+
+            // 核心过滤 2: 检查 Content-Type (排除 text/html, application/json 等)
+            const contentType = this.getResponseHeader('Content-Type');
+            if (!isImageContentType(contentType)) {
+                return;
+            }
+
+            // 核心过滤 3: 检查 URL 启发式规则 (排除黑名单扩展名)
+            if (isImageUrl(finalUrl)) {
+                notifyContentScript(finalUrl);
+            }
+        };
+
         return originalXHRopen.apply(this, arguments);
     };
 
