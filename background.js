@@ -27,7 +27,7 @@ function initializeState() {
     chrome.storage.local.get(['capturedUrls', 'isCapturing'], (result) => {
         interceptedImageUrls = result.capturedUrls || [];
         isCapturing = result.isCapturing || false;
-        console.log(`Service Worker loaded state. Capturing: ${isCapturing}, Images: ${interceptedImageUrls.length}`);
+        console.log(`初始化状态, 捕获状态: ${isCapturing}, 图片数量: ${interceptedImageUrls.length}`);
     });
 }
 
@@ -39,11 +39,6 @@ initializeState();
 chrome.webRequest.onBeforeRequest.addListener(
     function (details) {
         if (!isCapturing || details.type !== "image" || details.url.startsWith("chrome-extension://")) {
-            return { cancel: false };
-        }
-        
-        // 检查非成功响应 (尽管 webRequest 通常只拦截请求，但在某些模式下可能需要)
-        if (details.statusCode < 200 || details.statusCode >= 300) {
             return { cancel: false };
         }
 
@@ -58,7 +53,6 @@ chrome.webRequest.onBeforeRequest.addListener(
             }
             interceptedImageUrls = newUrls; // 更新内存引用
             wasNewImage = true;
-            console.log("WebRequest Intercepted:", url);
         }
 
         // 2. 如果捕获到新图片，立即保存并通知

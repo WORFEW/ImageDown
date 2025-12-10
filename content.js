@@ -55,7 +55,7 @@ function findAndSendImageUrls() {
             }
 
             // 过滤掉相对路径和非图片链接
-            if (src && src.startsWith('http') && !urls.includes(src)) {
+            if (src && src.startsWith('http') && isImageUrl(src) && !urls.includes(src)) {
                 urls.push(src);
             }
         });
