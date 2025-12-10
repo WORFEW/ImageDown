@@ -1,0 +1,217 @@
+/* styles.css */
+
+body {
+    width: 380px; /* 增加宽度以容纳更多按钮 */
+    min-height: 200px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 15px;
+    background-color: #f7f7f7;
+}
+
+h2 {
+    font-size: 1.1em;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+    margin-top: 10px;
+}
+
+#header {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+/* --- 捕获按钮样式 --- */
+#toggle-capture {
+    padding: 10px 20px;
+    font-size: 1em;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    color: white;
+    transition: background-color 0.3s;
+    width: 100%;
+}
+
+.start-capture {
+    background-color: #4CAF50; /* 绿色 */
+}
+
+.end-capture {
+    background-color: #F44336; /* 红色 */
+}
+
+/* --- 状态消息样式 --- */
+#status-message {
+    text-align: center;
+    padding: 8px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    background-color: #e8f5e9; 
+    color: #388e3c; 
+    font-size: 0.9em;
+    font-weight: bold;
+    visibility: hidden; /* 默认隐藏 */
+    opacity: 0;
+    transition: opacity 0.3s, visibility 0.3s;
+    height: 0; /* 默认不占空间 */
+    padding: 0 8px; /* 默认无内边距 */
+}
+#status-message.visible {
+    visibility: visible;
+    opacity: 1;
+    padding: 8px; /* 激活时显示内边距 */
+    height: auto; /* 激活时自适应高度 */
+}
+
+/* --- 图片列表容器 --- */
+#image-list-container {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 5px;
+    background-color: #fff;
+    border-radius: 4px;
+}
+
+.image-item {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 70px;
+    height: 70px;
+    margin: 5px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    border-radius: 3px;
+    vertical-align: top;
+}
+
+.image-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.image-item.selected {
+    border-color: #2196F3; /* 选中蓝色 */
+    box-shadow: 0 0 5px rgba(33, 150, 243, 0.5);
+}
+
+.no-images {
+    text-align: center;
+    color: #666;
+    padding: 20px 0;
+}
+
+/* --- 底部操作栏 --- */
+#action-bar {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px; /* 减小间距 */
+}
+
+#format-select {
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    flex-grow: 1; /* 让选择框占据更多空间 */
+}
+
+/* 默认按钮样式 */
+#action-bar button {
+    padding: 8px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+    background-color: #f0f0f0; 
+    color: #333;
+}
+#action-bar button:hover:not(:disabled) {
+    background-color: #ddd;
+}
+#action-bar button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* 下载按钮（绿色）*/
+#download-selected {
+    background-color: #4CAF50;
+    color: white;
+}
+#download-selected:hover:not(:disabled) {
+    background-color: #45a049;
+}
+
+/* 全选按钮 */
+#select-all {
+    background-color: #00bcd4; /* 青色 */
+    color: white;
+}
+#select-all:hover:not(:disabled) {
+    background-color: #00acc1;
+}
+
+/* 【修改】复制链接按钮 - 突出显示链接操作 */
+.link-button {
+    background-color: #2196F3; /* 蓝色 */
+    color: white;
+    font-weight: bold;
+}
+.link-button:hover:not(:disabled) {
+    background-color: #1e88e5;
+}
+
+/* 【修改】清空按钮 - 警告颜色，推到最右边 */
+.clear-button {
+    background-color: #f44336; /* 红色警告 */
+    color: white;
+    margin-left: auto; 
+    font-weight: bold;
+}
+.clear-button:hover:not(:disabled) {
+    background-color: #d32f2f;
+}
+
+/* --- 放大预览 Modal 样式 --- */
+#preview-modal {
+    position: fixed; 
+    z-index: 9999; 
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.95);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#preview-image {
+    max-width: 90vw; 
+    max-height: 90vh; 
+    display: block;
+    margin: auto;
+}
+
+.close-btn {
+    position: absolute;
+    top: 15px;
+    right: 35px;
+    color: #f1f1f1;
+    font-size: 40px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 10000;
+}
