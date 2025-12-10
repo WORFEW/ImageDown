@@ -90,7 +90,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (request.action === "clearImages") {
             const emptyUrls = [];
             // 清空列表，保存并通知
-            saveAndNotify(emptyUrls, isCapturing, true);
+            saveAndNotify(emptyUrls, isCapturing, maxUrlsLimit, true);
             sendResponse({ success: true });
             return true;
         }
