@@ -32,7 +32,7 @@
         {
             "resources": [
                 "utils.js",
-                "injector.js"
+                "inject.js"
             ],
             "matches": [
                 "<all_urls>"
