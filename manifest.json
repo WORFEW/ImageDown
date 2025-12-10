@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "图片拦截器",
-    "version": "1.2",
+    "version": "1.0",
     "description": "图片拦截器",
     "permissions": [
         "storage",
