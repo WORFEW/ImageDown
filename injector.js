@@ -13,7 +13,7 @@
         // 明确排除常见的非图片文件扩展名
         const blacklistExtensions = /\.(json|xml|html|js|css|txt)(\?.*)?$/i;
         if (blacklistExtensions.test(cleanUrl)) {
-            return false; // 明确排除 JSON, JS, CSS 等文件
+            return false;
         }
 
         // --- 2. 白名单/启发式判断 ---
