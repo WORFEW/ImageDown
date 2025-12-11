@@ -42,14 +42,11 @@ initializeState();
 // --- webRequest 监听器：网络层拦截 ---
 chrome.webRequest.onBeforeRequest.addListener(
     function (details) {
-        if (!isCapturing || details.type !== "image" || details.url.startsWith("chrome-extension://")) {
+        if (!isCapturing || details.type !== "image" || details.url.startsWith("chrome-extension://") || !isImageUrl(details.url)) {
             return { cancel: false };
         }
 
         const url = details.url;
-        if (!isImageUrl(url)) {
-            return { cancel: false };
-        }
         let wasNewImage = false;
 
         if (!interceptedImageUrls.includes(url)) {
