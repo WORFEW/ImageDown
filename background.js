@@ -136,7 +136,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const newLimit = parseInt(request.limit, 10);
         
         // 校验输入
-        if (!isNaN(newLimit) && newLimit > 100 && newLimit < 1000) { // 限制一个合理的最大值
+        if (!isNaN(newLimit) && newLimit >= 100 && newLimit <= 1000) { // 限制一个合理的最大值
             // 仅更新限制，不修改图片列表
             saveAndNotify(interceptedImageUrls, isCapturing, newLimit);
             sendResponse({ success: true, newLimit: newLimit });

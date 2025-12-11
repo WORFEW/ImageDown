@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function displayStatusMessage(message, duration = 3000, color = 'green') {
         clearTimeout(statusMessageElement.dataset.timeoutId);
         
-        limitStatusMessage.style.color = color;
+        statusMessageElement.style.color = color;
         statusMessageElement.textContent = message;
         statusMessageElement.classList.add('visible');
 
