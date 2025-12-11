@@ -1,28 +1,5 @@
 // content.js
 
-// --- 1. 注入 injector.js ---
-function injectScript(file_path) {
-    const s = document.createElement('script');
-    s.src = chrome.runtime.getURL(file_path);
-    // 脚本加载完成后移除，保持DOM干净
-    s.onload = function () {
-        this.remove();
-    };
-    (document.head || document.documentElement).appendChild(s);
-}
-injectScript('injector.js');
-
-// --- 2. 监听 injector.js 发来的数据 ---
-window.addEventListener('interceptedRequest', function (e) {
-    if (e.detail && e.detail.url) {
-        // 将劫持到的 URL 转发给 background.js (无需修改，使用 chrome.runtime.sendMessage)
-        chrome.runtime.sendMessage({
-            action: "foundImages",
-            urls: [e.detail.url]
-        });
-    }
-}, false);
-
 // --- 3. DOM 观察和图片查找 (添加去抖动优化) ---
 
 let debounceTimer;
@@ -54,8 +31,9 @@ function findAndSendImageUrls() {
                 }
             }
 
-            // 过滤掉相对路径和非图片链接
-            if (src && src.startsWith('http') && isImageUrl(src) && !urls.includes(src)) {
+            console.log(src,isImageUrl(src));
+
+            if (src && isImageUrl(src) && !urls.includes(src)) {
                 urls.push(src);
             }
         });

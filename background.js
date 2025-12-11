@@ -66,8 +66,7 @@ chrome.webRequest.onBeforeRequest.addListener(
 
         return { cancel: false };
     },
-    { urls: ["<all_urls>"] },
-    ["blocking"]
+    {urls: ["<all_urls>"]}
 );
 
 // --- **核心变化**：使用 chrome.runtime.onMessage 监听来自 popup 的请求 ---
