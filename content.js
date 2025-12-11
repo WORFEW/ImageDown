@@ -1,6 +1,6 @@
 // content.js
 
-// --- 3. DOM 观察和图片查找 (添加去抖动优化) ---
+// --- DOM 观察和图片查找 (添加去抖动优化) ---
 
 let debounceTimer;
 

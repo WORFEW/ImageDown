@@ -7,11 +7,7 @@ function isImageUrl(url) {
     // 1. 基本校验
     if (!url || typeof url !== 'string' || !url.startsWith('http')) return false;
 
-    // 2. 增强图片扩展名白名单/启发式匹配
     // (jpe?g|png|webp|svg|bmp|gif|tif|tiff|ico) 匹配常见图片格式
-    // ((\?.*&f=)|(\?.*fmt=)|(\?.*type=)) 匹配查询参数中常见的格式关键字
-
-    // 这个正则同时匹配路径末尾的扩展名 或 查询参数中的类型信息
     const imagePattern = /(jpg|jpeg|png|webp|svg|bmp|gif|tif|tiff|ico)/i;
 
     // --- 步骤 1: 图片白名单检查 (同时检查路径和查询参数) ---
