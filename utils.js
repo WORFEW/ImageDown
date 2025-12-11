@@ -7,8 +7,8 @@ function isImageUrl(url) {
     // 1. 基本校验
     if (!url || typeof url !== 'string' || !url.startsWith('http')) return false;
 
-    // (jpe?g|png|webp|svg|bmp|gif|tif|tiff|ico) 匹配常见图片格式
-    const imagePattern = /(jpg|jpeg|png|webp|svg|bmp|gif|tif|tiff|ico)/i;
+    // (jpe?g|png|webp|svg|bmp|tif|tiff|ico) 匹配常见图片格式
+    const imagePattern = /(jpg|jpeg|png|webp|svg|bmp|tif|tiff|ico)/i;
 
     // --- 步骤 1: 图片白名单检查 (同时检查路径和查询参数) ---
     if (imagePattern.test(url)) {
