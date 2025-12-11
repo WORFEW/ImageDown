@@ -3,6 +3,9 @@
     "name": "图片下载助手",
     "version": "1.0",
     "description": "图片下载助手",
+    "icons":{
+        "128":"images/icon128.png"
+    },
     "permissions": [
         "storage",
         "tabs",
