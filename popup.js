@@ -27,10 +27,16 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(statusMessageElement.dataset.timeoutId);
         
         statusMessageElement.textContent = message;
-        statusMessageElement.classList.add(status);
+        statusMessageElement.classList.add('visible');
+        if (status === 'error') {
+            statusMessageElement.classList.add('error');
+        }
         
         const timeoutId = setTimeout(() => {
-            statusMessageElement.classList.remove(status);
+            statusMessageElement.classList.remove('visible');
+            if (status === 'error') {
+                statusMessageElement.classList.remove('error');
+            }
         }, duration);
 
         statusMessageElement.dataset.timeoutId = timeoutId;
@@ -221,10 +227,10 @@ document.addEventListener('DOMContentLoaded', () => {
             limit: newLimit
         }, (response) => {
             if (response.success) {
-                displayStatusMessage(`最大获取数量限制已设置为 ${newLimit}`);
+                displayStatusMessage(`最大获取数量限制已设置为 ${newLimit}`, 2000);
                 renderImageList(currentImageUrls); // 重新渲染以应用新限制
             } else {
-                displayStatusMessage(`设置失败: ${response.reason}`, 4000, 'error');
+                displayStatusMessage(`设置失败: ${response.reason}`, 2000, 'error');
             }
         });
     });

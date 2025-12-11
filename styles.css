@@ -71,12 +71,7 @@ h2 {
     padding: 8px; /* 激活时显示内边距 */
     height: auto; /* 激活时自适应高度 */
 }
-#status-message.error {
-    visibility: visible;
-    opacity: 1;
-    height: auto;
-    padding: 8px; /* 激活时显示内边距 */
-    /* 更改颜色为错误/警告相关的红色系 */
+#status-message.visible.error {
     background-color: #ffebee; /* 浅红/粉色作为背景 */
     color: #d32f2f; /* 深红作为文本颜色 */
 }
