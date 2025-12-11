@@ -30,9 +30,6 @@ function findAndSendImageUrls() {
                     src = match[1];
                 }
             }
-
-            console.log(src,isImageUrl(src));
-
             if (src && isImageUrl(src) && !urls.includes(src)) {
                 urls.push(src);
             }
