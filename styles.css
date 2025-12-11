@@ -4,7 +4,7 @@ body {
     width: 370px; /* 增加宽度以容纳更多按钮 */
     min-height: 200px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    padding: 10px 15px;
+    padding: 15px;
     background-color: #f7f7f7;
 }
 
@@ -71,10 +71,19 @@ h2 {
     padding: 8px; /* 激活时显示内边距 */
     height: auto; /* 激活时自适应高度 */
 }
+#status-message.error {
+    visibility: visible;
+    opacity: 1;
+    height: auto;
+    padding: 8px; /* 激活时显示内边距 */
+    /* 更改颜色为错误/警告相关的红色系 */
+    background-color: #ffebee; /* 浅红/粉色作为背景 */
+    color: #d32f2f; /* 深红作为文本颜色 */
+}
 
 /* --- 图片列表容器 --- */
 #image-list-container {
-    max-height: 300px;
+    height: 250px;
     overflow-y: auto;
     border: 1px solid #ddd;
     padding: 5px;

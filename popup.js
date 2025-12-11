@@ -22,16 +22,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentImageUrls = [];
     let isCapturing = false; // 跟踪当前捕获状态
 
-    // --- 核心函数：显示无阻塞状态消息 ---
-    function displayStatusMessage(message, duration = 3000, color = 'green') {
+    // --- 核心函数：显示无阻塞状态消息 status 为visible error ---
+    function displayStatusMessage(message, duration = 3000, status = 'visible') {
         clearTimeout(statusMessageElement.dataset.timeoutId);
         
-        statusMessageElement.style.color = color;
         statusMessageElement.textContent = message;
-        statusMessageElement.classList.add('visible');
-
+        statusMessageElement.classList.add(status);
+        
         const timeoutId = setTimeout(() => {
-            statusMessageElement.classList.remove('visible');
+            statusMessageElement.classList.remove(status);
         }, duration);
 
         statusMessageElement.dataset.timeoutId = timeoutId;
@@ -93,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderImageList(urls) {
         imageListContainer.innerHTML = '';
         const count = urls.length;
-        imageCountTitle.textContent = `已捕获的图片 (${count} 张)`;
+        imageCountTitle.textContent = `已捕获的图片 ( ${count} / ${urlLimitInput.value} 张)`;
 
         const newlyCapturedUrls = new Set(urls.filter(url => !currentImageUrls.includes(url)));
         currentImageUrls = urls;
@@ -182,11 +181,10 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.storage.local.get(['capturedUrls', 'isCapturing', 'maxUrlsLimit'], (result) => {
             const urls = result.capturedUrls || [];
             const capturingState = result.isCapturing || false;
-            const limitValue = result.maxUrlsLimit || 100; // 默认值 100
+            urlLimitInput.value = result.maxUrlsLimit || 100; // 默认值 100
 
             renderImageList(urls);
             updateToggleButton(capturingState);
-            urlLimitInput.value = limitValue;
         });
     }
 
@@ -199,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.runtime.sendMessage({ action: "toggleCapture" })
             .catch(e => {
                 console.error("Failed to send toggleCapture message:", e);
-                displayStatusMessage("无法连接到后台服务。请重新打开面板。", 4000, 'red');
+                displayStatusMessage("无法连接到后台服务。请重新打开面板。", 3000, 'error');
             });
     });
 
@@ -209,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.runtime.sendMessage({ action: "clearImages" })
             .catch(e => {
                 console.error("Failed to send clearImages message:", e);
-                displayStatusMessage("无法连接到后台服务。请重新打开面板", 4000, 'red');
+                displayStatusMessage("无法连接到后台服务。请重新打开面板", 3000, 'error');
             });
     });
 
@@ -222,14 +220,14 @@ document.addEventListener('DOMContentLoaded', () => {
             action: "setMaxUrls",
             limit: newLimit
         }, (response) => {
-            if (response.success){
-                displayStatusMessage(`最大 URL 数量限制已设置为 ${newLimit}`);
+            if (response.success) {
+                displayStatusMessage(`最大获取数量限制已设置为 ${newLimit}`);
+                renderImageList(currentImageUrls); // 重新渲染以应用新限制
             } else {
-                displayStatusMessage(`设置失败: ${response.reason}`, 4000, 'red');
+                displayStatusMessage(`设置失败: ${response.reason}`, 4000, 'error');
             }
         });
     });
-
     // 以下为下载和复制逻辑，它们不需要修改，因为它们只使用本地数据 selectedUrls
 
     // --- 辅助函数：将图片 Blob 转换为目标格式 ---
