@@ -3,6 +3,8 @@
 // 使用 chrome.storage 存储数据，但为了快速访问和避免频繁 I/O，
 // 仍然在内存中维护核心数据。在扩展程序启动时，可以尝试从 storage 加载。
 
+importScripts('utils.js');
+
 let interceptedImageUrls = [];
 let maxUrlsLimit = 100; // 新增：最大 URL 数量限制
 let isCapturing = false;
@@ -45,6 +47,9 @@ chrome.webRequest.onBeforeRequest.addListener(
         }
 
         const url = details.url;
+        if (!isImageUrl(url)) {
+            return { cancel: false };
+        }
         let wasNewImage = false;
 
         if (!interceptedImageUrls.includes(url)) {
