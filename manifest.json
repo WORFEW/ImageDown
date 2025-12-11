@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "图片拦截器",
+    "name": "图片下载助手",
     "version": "1.0",
-    "description": "图片拦截器",
+    "description": "图片下载助手",
     "permissions": [
         "storage",
         "tabs",
