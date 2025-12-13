@@ -5,6 +5,21 @@
 let debounceTimer;
 
 /**
+ * 安全地发送消息到 Service Worker，防止在扩展上下文失效时抛出错误。
+ */
+function safeSendMessage(message) {
+    try {
+        if (chrome.runtime?.id) {
+            chrome.runtime.sendMessage(message);
+        }
+    } catch (e) {
+        console.warn(
+            "消息发送失败，可能原因：扩展被禁用/卸载/刷新/重新加载, 或扩展上下文已失效, service worker 已终止"
+        );
+    }
+}
+
+/**
  * 查找 DOM 中的图片 URL 并发送到 Service Worker。
  */
 function findAndSendImageUrls() {
@@ -36,8 +51,7 @@ function findAndSendImageUrls() {
         });
 
         if (urls.length > 0) {
-            // 将发现的图片 URL 发送给 background.js 存储 (无需修改，使用 chrome.runtime.sendMessage)
-            chrome.runtime.sendMessage({
+            safeSendMessage({
                 action: "foundImages",
                 urls: urls,
             });

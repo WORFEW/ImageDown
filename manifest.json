@@ -6,7 +6,7 @@
     "icons": {
         "128": "images/icon128.png"
     },
-    "permissions": ["storage", "tabs", "downloads", "webRequest", "<all_urls>"],
+    "permissions": ["storage", "tabs", "downloads", "webRequest"],
     "host_permissions": ["<all_urls>"],
     "background": {
         "service_worker": "background.js"
