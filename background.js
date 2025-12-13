@@ -26,17 +26,14 @@ function saveAndNotify(urls, capturingState, newLimit = maxUrlsLimit) {
 
 // --- 初始化/恢复状态：在 Service Worker 启动时尝试加载存储的数据 ---
 function initializeState() {
-    chrome.storage.local.get(
-        ["capturedUrls", "isCapturing", "maxUrlsLimit"],
-        (result) => {
-            interceptedImageUrls = result.capturedUrls || [];
-            isCapturing = result.isCapturing || false;
-            maxUrlsLimit = result.maxUrlsLimit || 100; // 新增：加载限制值，默认 100
-            console.log(
-                `初始化状态, 捕获状态: ${isCapturing}, 图片数量: ${interceptedImageUrls.length} , 最大限制: ${maxUrlsLimit}`
-            );
-        }
-    );
+    chrome.storage.local.get(["capturedUrls", "isCapturing", "maxUrlsLimit"], (result) => {
+        interceptedImageUrls = result.capturedUrls || [];
+        isCapturing = result.isCapturing || false;
+        maxUrlsLimit = result.maxUrlsLimit || 100; // 新增：加载限制值，默认 100
+        console.log(
+            `初始化状态, 捕获状态: ${isCapturing}, 图片数量: ${interceptedImageUrls.length} , 最大限制: ${maxUrlsLimit}`
+        );
+    });
 }
 
 // 在 Service Worker 启动时执行初始化

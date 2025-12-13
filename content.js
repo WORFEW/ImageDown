@@ -13,9 +13,7 @@ function findAndSendImageUrls() {
 
     // 延迟发送，等待 DOM 变化稳定
     debounceTimer = setTimeout(() => {
-        const images = document.querySelectorAll(
-            'img, [style*="background-image"]'
-        );
+        const images = document.querySelectorAll('img, [style*="background-image"]');
         const urls = [];
 
         images.forEach((el) => {

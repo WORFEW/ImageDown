@@ -23,11 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let isCapturing = false; // 跟踪当前捕获状态
 
     // --- 核心函数：显示无阻塞状态消息 status 为visible error ---
-    function displayStatusMessage(
-        message,
-        duration = 3000,
-        status = "visible"
-    ) {
+    function displayStatusMessage(message, duration = 3000, status = "visible") {
         clearTimeout(statusMessageElement.dataset.timeoutId);
 
         statusMessageElement.textContent = message;
@@ -83,8 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function selectAllImages() {
         const imageItems = imageListContainer.querySelectorAll(".image-item");
         const isCurrentlyAllSelected =
-            selectedUrls.size === currentImageUrls.length &&
-            currentImageUrls.length > 0;
+            selectedUrls.size === currentImageUrls.length && currentImageUrls.length > 0;
 
         if (isCurrentlyAllSelected) {
             selectedUrls.clear();
@@ -106,9 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const count = urls.length;
         imageCountTitle.textContent = `已捕获的图片 ( ${count} / ${urlLimitInput.value} 张)`;
 
-        const newlyCapturedUrls = new Set(
-            urls.filter((url) => !currentImageUrls.includes(url))
-        );
+        const newlyCapturedUrls = new Set(urls.filter((url) => !currentImageUrls.includes(url)));
         currentImageUrls = urls;
 
         // --- 同步 selectedUrls ---
@@ -144,10 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (newlyCapturedUrls.has(url)) {
                 imgWrapper.classList.add("newly-captured");
-                setTimeout(
-                    () => imgWrapper.classList.remove("newly-captured"),
-                    500
-                );
+                setTimeout(() => imgWrapper.classList.remove("newly-captured"), 500);
             }
 
             const img = document.createElement("img");
@@ -168,9 +158,7 @@ document.addEventListener("DOMContentLoaded", () => {
             imgWrapper.appendChild(img);
             imageListContainer.appendChild(imgWrapper);
 
-            imgWrapper.addEventListener("click", () =>
-                toggleImageSelection(imgWrapper, url)
-            );
+            imgWrapper.addEventListener("click", () => toggleImageSelection(imgWrapper, url));
             imgWrapper.addEventListener("dblclick", () => openPreview(url));
         });
     }
@@ -202,17 +190,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- 初始化：获取初始数据 ---
     function initializePopup() {
-        chrome.storage.local.get(
-            ["capturedUrls", "isCapturing", "maxUrlsLimit"],
-            (result) => {
-                const urls = result.capturedUrls || [];
-                const capturingState = result.isCapturing || false;
-                urlLimitInput.value = result.maxUrlsLimit || 100; // 默认值 100
+        chrome.storage.local.get(["capturedUrls", "isCapturing", "maxUrlsLimit"], (result) => {
+            const urls = result.capturedUrls || [];
+            const capturingState = result.isCapturing || false;
+            urlLimitInput.value = result.maxUrlsLimit || 100; // 默认值 100
 
-                renderImageList(urls);
-                updateToggleButton(capturingState);
-            }
-        );
+            renderImageList(urls);
+            updateToggleButton(capturingState);
+        });
     }
 
     // --- 绑定事件监听器 (通过 chrome.runtime.sendMessage 发送请求) ---
@@ -223,11 +208,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // 使用短消息发送请求
         chrome.runtime.sendMessage({ action: "toggleCapture" }).catch((e) => {
             console.error("Failed to send toggleCapture message:", e);
-            displayStatusMessage(
-                "无法连接到后台服务。请重新打开面板。",
-                3000,
-                "error"
-            );
+            displayStatusMessage("无法连接到后台服务。请重新打开面板。", 3000, "error");
         });
     });
 
@@ -236,11 +217,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // 使用短消息发送请求
         chrome.runtime.sendMessage({ action: "clearImages" }).catch((e) => {
             console.error("Failed to send clearImages message:", e);
-            displayStatusMessage(
-                "无法连接到后台服务。请重新打开面板",
-                3000,
-                "error"
-            );
+            displayStatusMessage("无法连接到后台服务。请重新打开面板", 3000, "error");
         });
     });
 
@@ -256,17 +233,10 @@ document.addEventListener("DOMContentLoaded", () => {
             },
             (response) => {
                 if (response.success) {
-                    displayStatusMessage(
-                        `最大获取数量限制已设置为 ${newLimit}`,
-                        2000
-                    );
+                    displayStatusMessage(`最大获取数量限制已设置为 ${newLimit}`, 2000);
                     renderImageList(currentImageUrls); // 重新渲染以应用新限制
                 } else {
-                    displayStatusMessage(
-                        `设置失败: ${response.reason}`,
-                        2000,
-                        "error"
-                    );
+                    displayStatusMessage(`设置失败: ${response.reason}`, 2000, "error");
                 }
             }
         );
@@ -294,9 +264,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 } else if (targetFormat === "jpeg") {
                     mimeType = "image/jpeg";
                 } else {
-                    reject(
-                        new Error(`Unsupported target format: ${targetFormat}`)
-                    );
+                    reject(new Error(`Unsupported target format: ${targetFormat}`));
                     return;
                 }
 
@@ -305,11 +273,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             img.onerror = () => {
                 URL.revokeObjectURL(url);
-                reject(
-                    new Error(
-                        "Failed to load image onto canvas for conversion."
-                    )
-                );
+                reject(new Error("Failed to load image onto canvas for conversion."));
             };
 
             img.src = url;
@@ -341,10 +305,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const totalCount = urls.length;
         const targetFormat = formatSelect.value;
 
-        displayStatusMessage(
-            `正在准备下载 ${totalCount} 张图片，请稍候...`,
-            10000
-        );
+        displayStatusMessage(`正在准备下载 ${totalCount} 张图片，请稍候...`, 10000);
         downloadButton.disabled = true;
 
         for (const url of urls) {
@@ -352,15 +313,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 // --- 1. 使用 fetch 获取 Blob 数据并记录 Content-Type ---
                 const response = await fetch(url);
                 if (!response.ok) {
-                    throw new Error(
-                        `Failed to fetch ${url}: ${response.statusText}`
-                    );
+                    throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
                 }
 
                 // 获取 Content-Type（服务器的权威信息）
-                const contentType =
-                    response.headers.get("content-type") ||
-                    response.blob().type;
+                const contentType = response.headers.get("content-type") || response.blob().type;
                 let originalFormatName = getExtensionFromMime(contentType); // 例如 'jpeg', 'png', 或 ''
 
                 let blob = await response.blob();
@@ -371,8 +328,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 // 如果 originalFormatName 为空，先使用 Blob 对象的 type，但它可能不准
                 const currentMime =
-                    originalFormatName ||
-                    (blob.type ? blob.type.split("/")[1] : "");
+                    originalFormatName || (blob.type ? blob.type.split("/")[1] : "");
 
                 if (targetFormat !== "original") {
                     if (currentMime !== targetFormat) {
@@ -431,10 +387,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 zip.file(filename, blob, { binary: true });
                 downloadedCount++;
 
-                displayStatusMessage(
-                    `已打包 ${downloadedCount} / ${totalCount} 张图片...`,
-                    500
-                );
+                displayStatusMessage(`已打包 ${downloadedCount} / ${totalCount} 张图片...`, 500);
             } catch (error) {
                 console.error(`跳过下载：${url}`, error);
             }
@@ -445,10 +398,7 @@ document.addEventListener("DOMContentLoaded", () => {
             displayStatusMessage(`正在压缩...`, 10000);
             const zipBlob = await zip.generateAsync({ type: "blob" });
 
-            const zipName = `images_${new Date()
-                .toISOString()
-                .slice(0, 10)
-                .replace(/-/g, "")}.zip`;
+            const zipName = `images_${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.zip`;
 
             const a = document.createElement("a");
             a.href = URL.createObjectURL(zipBlob);
@@ -474,9 +424,7 @@ document.addEventListener("DOMContentLoaded", () => {
         navigator.clipboard
             .writeText(linksToCopy)
             .then(() => {
-                displayStatusMessage(
-                    `已复制 ${selectedUrls.size} 个图片链接到剪贴板!`
-                );
+                displayStatusMessage(`已复制 ${selectedUrls.size} 个图片链接到剪贴板!`);
             })
             .catch((err) => {
                 console.error("复制失败:", err);

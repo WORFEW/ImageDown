@@ -5,8 +5,7 @@
  */
 function isImageUrl(url) {
     // 1. 基本校验
-    if (!url || typeof url !== "string" || !url.startsWith("http"))
-        return false;
+    if (!url || typeof url !== "string" || !url.startsWith("http")) return false;
 
     // (jpe?g|png|webp|svg|bmp|tif|tiff|ico) 匹配常见图片格式
     const imagePattern = /(jpg|jpeg|png|webp|svg|bmp|tif|tiff|ico)/i;
