@@ -3,7 +3,7 @@
 // 使用 chrome.storage 存储数据，但为了快速访问和避免频繁 I/O，
 // 仍然在内存中维护核心数据。在扩展程序启动时，可以尝试从 storage 加载。
 
-importScripts('utils.js');
+importScripts("utils.js");
 
 let interceptedImageUrls = [];
 let maxUrlsLimit = 100; // 新增：最大 URL 数量限制
@@ -20,29 +20,37 @@ function saveAndNotify(urls, capturingState, newLimit = maxUrlsLimit) {
     chrome.storage.local.set({
         capturedUrls: interceptedImageUrls,
         isCapturing: isCapturing,
-        maxUrlsLimit: maxUrlsLimit
+        maxUrlsLimit: maxUrlsLimit,
     });
-    
 }
 
 // --- 初始化/恢复状态：在 Service Worker 启动时尝试加载存储的数据 ---
 function initializeState() {
-    chrome.storage.local.get(['capturedUrls', 'isCapturing', 'maxUrlsLimit'], (result) => {
-        interceptedImageUrls = result.capturedUrls || [];
-        isCapturing = result.isCapturing || false;
-        maxUrlsLimit = result.maxUrlsLimit || 100; // 新增：加载限制值，默认 100
-        console.log(`初始化状态, 捕获状态: ${isCapturing}, 图片数量: ${interceptedImageUrls.length} , 最大限制: ${maxUrlsLimit}`);
-    });
+    chrome.storage.local.get(
+        ["capturedUrls", "isCapturing", "maxUrlsLimit"],
+        (result) => {
+            interceptedImageUrls = result.capturedUrls || [];
+            isCapturing = result.isCapturing || false;
+            maxUrlsLimit = result.maxUrlsLimit || 100; // 新增：加载限制值，默认 100
+            console.log(
+                `初始化状态, 捕获状态: ${isCapturing}, 图片数量: ${interceptedImageUrls.length} , 最大限制: ${maxUrlsLimit}`
+            );
+        }
+    );
 }
 
 // 在 Service Worker 启动时执行初始化
 initializeState();
 
-
 // --- webRequest 监听器：网络层拦截 ---
 chrome.webRequest.onBeforeRequest.addListener(
     function (details) {
-        if (!isCapturing || details.type !== "image" || details.url.startsWith("chrome-extension://") || !isImageUrl(details.url)) {
+        if (
+            !isCapturing ||
+            details.type !== "image" ||
+            details.url.startsWith("chrome-extension://") ||
+            !isImageUrl(details.url)
+        ) {
             return { cancel: false };
         }
 
@@ -74,7 +82,6 @@ chrome.webRequest.onBeforeRequest.addListener(
 // 这取代了 Port 连接监听器 chrome.runtime.onConnect
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-
     // ----------------------------------------------------
     // 处理来自 Popup 的操作请求
     // ----------------------------------------------------
@@ -91,9 +98,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             const emptyUrls = [];
             // 清空列表，保存并通知
             saveAndNotify(
-                urls = emptyUrls,
-                capturingState = isCapturing,
-                newLimit = maxUrlsLimit
+                (urls = emptyUrls),
+                (capturingState = isCapturing),
+                (newLimit = maxUrlsLimit)
             );
             sendResponse({ success: true });
             return true;
@@ -113,7 +120,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         // 1. 更新列表
         const newUrls = [...interceptedImageUrls]; // 复制当前列表
-        request.urls.forEach(url => {
+        request.urls.forEach((url) => {
             if (!newUrls.includes(url)) {
                 newUrls.unshift(url);
                 wasNewImage = true;
@@ -127,10 +134,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // 2. 如果捕获到新图片，立即保存并通知
         if (wasNewImage) {
             // 使用新列表保存并通知
-            saveAndNotify(
-                urls = newUrls,
-                capturingState = isCapturing
-            );
+            saveAndNotify((urls = newUrls), (capturingState = isCapturing));
         }
 
         sendResponse({ success: true });
@@ -143,16 +147,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const upLimit = parseInt(request.limit, 10);
 
         // 校验输入
-        if (!isNaN(upLimit) && upLimit >= 100 && upLimit <= 1000) { // 限制一个合理的最大值
+        if (!isNaN(upLimit) && upLimit >= 100 && upLimit <= 1000) {
+            // 限制一个合理的最大值
             // 仅更新限制，不修改图片列表
             saveAndNotify(
-                urls = interceptedImageUrls,
-                capturingState = isCapturing,
-                newLimit = upLimit
+                (urls = interceptedImageUrls),
+                (capturingState = isCapturing),
+                (newLimit = upLimit)
             );
             sendResponse({ success: true, newLimit: upLimit });
         } else {
-            sendResponse({ success: false, reason: "最大限制值无效或超出范围, 限制为 100 到 1000" });
+            sendResponse({
+                success: false,
+                reason: "最大限制值无效或超出范围, 限制为 100 到 1000",
+            });
         }
         return true;
     }

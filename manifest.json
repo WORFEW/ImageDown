@@ -3,31 +3,18 @@
     "name": "图片下载助手",
     "version": "1.0",
     "description": "图片下载助手",
-    "icons":{
-        "128":"images/icon128.png"
+    "icons": {
+        "128": "images/icon128.png"
     },
-    "permissions": [
-        "storage",
-        "tabs",
-        "downloads",
-        "webRequest",
-        "<all_urls>"
-    ],
-    "host_permissions": [
-        "<all_urls>"
-    ],
+    "permissions": ["storage", "tabs", "downloads", "webRequest", "<all_urls>"],
+    "host_permissions": ["<all_urls>"],
     "background": {
         "service_worker": "background.js"
     },
     "content_scripts": [
         {
-            "matches": [
-                "<all_urls>"
-            ],
-            "js": [
-                "utils.js",
-                "content.js"
-            ],
+            "matches": ["<all_urls>"],
+            "js": ["utils.js", "content.js"],
             "run_at": "document_idle"
         }
     ],

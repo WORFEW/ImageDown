@@ -1,21 +1,21 @@
 // popup.js - 重构为使用 chrome.storage.onChanged 实现数据同步
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
     // --- UI 元素获取 ---
-    const imageListContainer = document.getElementById('image-list-container');
-    const toggleCaptureButton = document.getElementById('toggle-capture');
-    const downloadButton = document.getElementById('download-selected');
-    const copyButton = document.getElementById('copy-link-selected');
-    const formatSelect = document.getElementById('format-select');
-    const previewModal = document.getElementById('preview-modal');
-    const previewImage = document.getElementById('preview-image');
-    const closeBtn = document.querySelector('.close-btn');
-    const imageCountTitle = document.getElementById('image-count-title');
-    const clearImagesButton = document.getElementById('clear-images');
-    const statusMessageElement = document.getElementById('status-message');
-    const selectAllButton = document.getElementById('select-all');
-    const urlLimitInput = document.getElementById('urlLimit');
-    const saveLimitButton = document.getElementById('saveLimit');
+    const imageListContainer = document.getElementById("image-list-container");
+    const toggleCaptureButton = document.getElementById("toggle-capture");
+    const downloadButton = document.getElementById("download-selected");
+    const copyButton = document.getElementById("copy-link-selected");
+    const formatSelect = document.getElementById("format-select");
+    const previewModal = document.getElementById("preview-modal");
+    const previewImage = document.getElementById("preview-image");
+    const closeBtn = document.querySelector(".close-btn");
+    const imageCountTitle = document.getElementById("image-count-title");
+    const clearImagesButton = document.getElementById("clear-images");
+    const statusMessageElement = document.getElementById("status-message");
+    const selectAllButton = document.getElementById("select-all");
+    const urlLimitInput = document.getElementById("urlLimit");
+    const saveLimitButton = document.getElementById("saveLimit");
 
     // **核心数据结构**
     let selectedUrls = new Set();
@@ -23,19 +23,23 @@ document.addEventListener('DOMContentLoaded', () => {
     let isCapturing = false; // 跟踪当前捕获状态
 
     // --- 核心函数：显示无阻塞状态消息 status 为visible error ---
-    function displayStatusMessage(message, duration = 3000, status = 'visible') {
+    function displayStatusMessage(
+        message,
+        duration = 3000,
+        status = "visible"
+    ) {
         clearTimeout(statusMessageElement.dataset.timeoutId);
-        
+
         statusMessageElement.textContent = message;
-        statusMessageElement.classList.add('visible');
-        if (status === 'error') {
-            statusMessageElement.classList.add('error');
+        statusMessageElement.classList.add("visible");
+        if (status === "error") {
+            statusMessageElement.classList.add("error");
         }
-        
+
         const timeoutId = setTimeout(() => {
-            statusMessageElement.classList.remove('visible');
-            if (status === 'error') {
-                statusMessageElement.classList.remove('error');
+            statusMessageElement.classList.remove("visible");
+            if (status === "error") {
+                statusMessageElement.classList.remove("error");
             }
         }, duration);
 
@@ -54,20 +58,20 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateToggleButton(capturingState) {
         isCapturing = capturingState; // 更新本地状态
         if (isCapturing) {
-            toggleCaptureButton.textContent = '结束捕获';
-            toggleCaptureButton.classList.remove('start-capture');
-            toggleCaptureButton.classList.add('end-capture');
+            toggleCaptureButton.textContent = "结束捕获";
+            toggleCaptureButton.classList.remove("start-capture");
+            toggleCaptureButton.classList.add("end-capture");
         } else {
-            toggleCaptureButton.textContent = '开始捕获';
-            toggleCaptureButton.classList.remove('end-capture');
-            toggleCaptureButton.classList.add('start-capture');
+            toggleCaptureButton.textContent = "开始捕获";
+            toggleCaptureButton.classList.remove("end-capture");
+            toggleCaptureButton.classList.add("start-capture");
         }
     }
 
     // --- 多选/切换选择逻辑 ---
     function toggleImageSelection(element, url) {
-        element.classList.toggle('selected');
-        if (element.classList.contains('selected')) {
+        element.classList.toggle("selected");
+        if (element.classList.contains("selected")) {
             selectedUrls.add(url);
         } else {
             selectedUrls.delete(url);
@@ -77,18 +81,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 全选/取消全选逻辑 ---
     function selectAllImages() {
-        const imageItems = imageListContainer.querySelectorAll('.image-item');
-        const isCurrentlyAllSelected = selectedUrls.size === currentImageUrls.length && currentImageUrls.length > 0;
+        const imageItems = imageListContainer.querySelectorAll(".image-item");
+        const isCurrentlyAllSelected =
+            selectedUrls.size === currentImageUrls.length &&
+            currentImageUrls.length > 0;
 
         if (isCurrentlyAllSelected) {
             selectedUrls.clear();
-            imageItems.forEach(item => item.classList.remove('selected'));
+            imageItems.forEach((item) => item.classList.remove("selected"));
         } else {
             selectedUrls.clear();
-            imageItems.forEach(item => {
+            imageItems.forEach((item) => {
                 const url = item.dataset.url;
                 selectedUrls.add(url);
-                item.classList.add('selected');
+                item.classList.add("selected");
             });
         }
         updateActionButtons();
@@ -96,11 +102,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 图片列表渲染 ---
     function renderImageList(urls) {
-        imageListContainer.innerHTML = '';
+        imageListContainer.innerHTML = "";
         const count = urls.length;
         imageCountTitle.textContent = `已捕获的图片 ( ${count} / ${urlLimitInput.value} 张)`;
 
-        const newlyCapturedUrls = new Set(urls.filter(url => !currentImageUrls.includes(url)));
+        const newlyCapturedUrls = new Set(
+            urls.filter((url) => !currentImageUrls.includes(url))
+        );
         currentImageUrls = urls;
 
         // --- 同步 selectedUrls ---
@@ -108,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedUrls.clear();
         } else {
             const newSelection = new Set();
-            urls.forEach(url => {
+            urls.forEach((url) => {
                 if (selectedUrls.has(url)) {
                     newSelection.add(url);
                 }
@@ -119,56 +127,66 @@ document.addEventListener('DOMContentLoaded', () => {
         updateActionButtons();
 
         if (count === 0) {
-            imageListContainer.innerHTML = '<p class="no-images">当前没有捕获到的图片。请启动捕获并刷新页面。</p>';
+            imageListContainer.innerHTML =
+                '<p class="no-images">当前没有捕获到的图片。请启动捕获并刷新页面。</p>';
             return;
         }
 
-        urls.forEach(url => {
-            const imgWrapper = document.createElement('div');
+        urls.forEach((url) => {
+            const imgWrapper = document.createElement("div");
 
             if (selectedUrls.has(url)) {
-                imgWrapper.classList.add('selected');
+                imgWrapper.classList.add("selected");
             }
 
-            imgWrapper.classList.add('image-item');
+            imgWrapper.classList.add("image-item");
             imgWrapper.dataset.url = url;
 
             if (newlyCapturedUrls.has(url)) {
-                imgWrapper.classList.add('newly-captured');
-                setTimeout(() => imgWrapper.classList.remove('newly-captured'), 500);
+                imgWrapper.classList.add("newly-captured");
+                setTimeout(
+                    () => imgWrapper.classList.remove("newly-captured"),
+                    500
+                );
             }
 
-            const img = document.createElement('img');
+            const img = document.createElement("img");
             img.src = url;
             img.loading = "lazy";
 
             img.onerror = function () {
-                imgWrapper.style.backgroundColor = '#f0f0f0';
-                img.style.display = 'none';
-                const errorText = document.createElement('span');
-                errorText.textContent = '无法预览';
-                errorText.style.fontSize = '10px';
-                errorText.style.color = '#666';
-                errorText.style.textAlign = 'center';
+                imgWrapper.style.backgroundColor = "#f0f0f0";
+                img.style.display = "none";
+                const errorText = document.createElement("span");
+                errorText.textContent = "无法预览";
+                errorText.style.fontSize = "10px";
+                errorText.style.color = "#666";
+                errorText.style.textAlign = "center";
                 imgWrapper.appendChild(errorText);
             };
 
             imgWrapper.appendChild(img);
             imageListContainer.appendChild(imgWrapper);
 
-            imgWrapper.addEventListener('click', () => toggleImageSelection(imgWrapper, url));
-            imgWrapper.addEventListener('dblclick', () => openPreview(url));
+            imgWrapper.addEventListener("click", () =>
+                toggleImageSelection(imgWrapper, url)
+            );
+            imgWrapper.addEventListener("dblclick", () => openPreview(url));
         });
     }
 
     // --- 核心变化：使用 chrome.storage.onChanged 监听数据变化 ---
     chrome.storage.onChanged.addListener((changes, namespace) => {
-        if (namespace !== 'local') return;
+        if (namespace !== "local") return;
 
         if (changes.capturedUrls) {
             const newUrls = changes.capturedUrls.newValue || [];
             renderImageList(newUrls);
-            if (newUrls.length === 0 && (changes.capturedUrls.oldValue && changes.capturedUrls.oldValue.length > 0)) {
+            if (
+                newUrls.length === 0 &&
+                changes.capturedUrls.oldValue &&
+                changes.capturedUrls.oldValue.length > 0
+            ) {
                 displayStatusMessage("图片列表已清空。");
             }
         }
@@ -184,55 +202,74 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 初始化：获取初始数据 ---
     function initializePopup() {
-        chrome.storage.local.get(['capturedUrls', 'isCapturing', 'maxUrlsLimit'], (result) => {
-            const urls = result.capturedUrls || [];
-            const capturingState = result.isCapturing || false;
-            urlLimitInput.value = result.maxUrlsLimit || 100; // 默认值 100
+        chrome.storage.local.get(
+            ["capturedUrls", "isCapturing", "maxUrlsLimit"],
+            (result) => {
+                const urls = result.capturedUrls || [];
+                const capturingState = result.isCapturing || false;
+                urlLimitInput.value = result.maxUrlsLimit || 100; // 默认值 100
 
-            renderImageList(urls);
-            updateToggleButton(capturingState);
-        });
+                renderImageList(urls);
+                updateToggleButton(capturingState);
+            }
+        );
     }
 
     // --- 绑定事件监听器 (通过 chrome.runtime.sendMessage 发送请求) ---
 
-    selectAllButton.addEventListener('click', selectAllImages);
+    selectAllButton.addEventListener("click", selectAllImages);
 
-    toggleCaptureButton.addEventListener('click', () => {
+    toggleCaptureButton.addEventListener("click", () => {
         // 使用短消息发送请求
-        chrome.runtime.sendMessage({ action: "toggleCapture" })
-            .catch(e => {
-                console.error("Failed to send toggleCapture message:", e);
-                displayStatusMessage("无法连接到后台服务。请重新打开面板。", 3000, 'error');
-            });
+        chrome.runtime.sendMessage({ action: "toggleCapture" }).catch((e) => {
+            console.error("Failed to send toggleCapture message:", e);
+            displayStatusMessage(
+                "无法连接到后台服务。请重新打开面板。",
+                3000,
+                "error"
+            );
+        });
     });
 
-    clearImagesButton.addEventListener('click', () => {
+    clearImagesButton.addEventListener("click", () => {
         displayStatusMessage("正在清空图片列表...", 1000);
         // 使用短消息发送请求
-        chrome.runtime.sendMessage({ action: "clearImages" })
-            .catch(e => {
-                console.error("Failed to send clearImages message:", e);
-                displayStatusMessage("无法连接到后台服务。请重新打开面板", 3000, 'error');
-            });
+        chrome.runtime.sendMessage({ action: "clearImages" }).catch((e) => {
+            console.error("Failed to send clearImages message:", e);
+            displayStatusMessage(
+                "无法连接到后台服务。请重新打开面板",
+                3000,
+                "error"
+            );
+        });
     });
 
     // 新增：MAX_URLS 保存事件
-    saveLimitButton.addEventListener('click', () => {
+    saveLimitButton.addEventListener("click", () => {
         const newLimit = parseInt(urlLimitInput.value, 10);
 
         // 向 Service Worker 发送消息以保存新限制
-        chrome.runtime.sendMessage({
-            action: "setMaxUrls",
-            limit: newLimit
-        }, (response) => {
-            if (response.success) {
-                displayStatusMessage(`最大获取数量限制已设置为 ${newLimit}`, 2000);
-                renderImageList(currentImageUrls); // 重新渲染以应用新限制
-            } else {
-                displayStatusMessage(`设置失败: ${response.reason}`, 2000, 'error');
+        chrome.runtime.sendMessage(
+            {
+                action: "setMaxUrls",
+                limit: newLimit,
+            },
+            (response) => {
+                if (response.success) {
+                    displayStatusMessage(
+                        `最大获取数量限制已设置为 ${newLimit}`,
+                        2000
+                    );
+                    renderImageList(currentImageUrls); // 重新渲染以应用新限制
+                } else {
+                    displayStatusMessage(
+                        `设置失败: ${response.reason}`,
+                        2000,
+                        "error"
+                    );
+                }
             }
-        });
+        );
     });
     // 以下为下载和复制逻辑，它们不需要修改，因为它们只使用本地数据 selectedUrls
 
@@ -244,20 +281,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             img.onload = () => {
                 URL.revokeObjectURL(url);
-                const canvas = document.createElement('canvas');
+                const canvas = document.createElement("canvas");
                 canvas.width = img.width;
                 canvas.height = img.height;
 
-                const ctx = canvas.getContext('2d');
+                const ctx = canvas.getContext("2d");
                 ctx.drawImage(img, 0, 0);
 
                 let mimeType;
-                if (targetFormat === 'png') {
-                    mimeType = 'image/png';
-                } else if (targetFormat === 'jpeg') {
-                    mimeType = 'image/jpeg';
+                if (targetFormat === "png") {
+                    mimeType = "image/png";
+                } else if (targetFormat === "jpeg") {
+                    mimeType = "image/jpeg";
                 } else {
-                    reject(new Error(`Unsupported target format: ${targetFormat}`));
+                    reject(
+                        new Error(`Unsupported target format: ${targetFormat}`)
+                    );
                     return;
                 }
 
@@ -266,7 +305,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             img.onerror = () => {
                 URL.revokeObjectURL(url);
-                reject(new Error("Failed to load image onto canvas for conversion."));
+                reject(
+                    new Error(
+                        "Failed to load image onto canvas for conversion."
+                    )
+                );
             };
 
             img.src = url;
@@ -275,21 +318,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 辅助函数：根据 Blob 的 Content-Type 确定扩展名 ---
     function getExtensionFromMime(mimeType) {
-        if (!mimeType) return '';
+        if (!mimeType) return "";
         const mimeMap = {
-            'image/jpeg': 'jpeg',
-            'image/png': 'png',
-            'image/gif': 'gif',
-            'image/webp': 'webp',
-            'image/svg+xml': 'svg'
+            "image/jpeg": "jpeg",
+            "image/png": "png",
+            "image/gif": "gif",
+            "image/webp": "webp",
+            "image/svg+xml": "svg",
         };
         // 移除 Content-Type 后的字符集信息 (如 image/jpeg;charset=utf-8)
-        const cleanType = mimeType.split(';')[0].toLowerCase();
-        return mimeMap[cleanType] || ''; // 返回格式名 (如 'jpeg' 或 '')
+        const cleanType = mimeType.split(";")[0].toLowerCase();
+        return mimeMap[cleanType] || ""; // 返回格式名 (如 'jpeg' 或 '')
     }
 
     // --- 多选下载功能：改为 ZIP 压缩包下载 (集成格式转换) ---
-    downloadButton.addEventListener('click', async () => {
+    downloadButton.addEventListener("click", async () => {
         if (selectedUrls.size === 0) return;
 
         const urls = Array.from(selectedUrls);
@@ -298,7 +341,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalCount = urls.length;
         const targetFormat = formatSelect.value;
 
-        displayStatusMessage(`正在准备下载 ${totalCount} 张图片，请稍候...`, 10000);
+        displayStatusMessage(
+            `正在准备下载 ${totalCount} 张图片，请稍候...`,
+            10000
+        );
         downloadButton.disabled = true;
 
         for (const url of urls) {
@@ -306,23 +352,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 // --- 1. 使用 fetch 获取 Blob 数据并记录 Content-Type ---
                 const response = await fetch(url);
                 if (!response.ok) {
-                    throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
+                    throw new Error(
+                        `Failed to fetch ${url}: ${response.statusText}`
+                    );
                 }
 
                 // 获取 Content-Type（服务器的权威信息）
-                const contentType = response.headers.get('content-type') || response.blob().type;
+                const contentType =
+                    response.headers.get("content-type") ||
+                    response.blob().type;
                 let originalFormatName = getExtensionFromMime(contentType); // 例如 'jpeg', 'png', 或 ''
 
                 let blob = await response.blob();
 
                 // 2. 【核心修改】处理格式转换
-                let newExtension = '';
+                let newExtension = "";
                 let isConverted = false;
 
                 // 如果 originalFormatName 为空，先使用 Blob 对象的 type，但它可能不准
-                const currentMime = originalFormatName || (blob.type ? blob.type.split('/')[1] : '');
+                const currentMime =
+                    originalFormatName ||
+                    (blob.type ? blob.type.split("/")[1] : "");
 
-                if (targetFormat !== 'original') {
+                if (targetFormat !== "original") {
                     if (currentMime !== targetFormat) {
                         blob = await convertToTargetFormat(blob, targetFormat);
                         newExtension = `.${targetFormat}`;
@@ -332,15 +384,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 如果是 'original'，但 originalFormatName 为空 (如动态链接)，
                     // 尝试用一个默认的格式名来帮助生成文件名。
                     if (!originalFormatName) {
-                        originalFormatName = 'jpg'; // 动态链接若不能识别，假定为 jpg
+                        originalFormatName = "jpg"; // 动态链接若不能识别，假定为 jpg
                     }
                 }
 
                 // 3. 获取文件名并处理扩展名
-                const urlParts = url.split('/');
-                let filename = urlParts[urlParts.length - 1].split('?')[0];
+                const urlParts = url.split("/");
+                let filename = urlParts[urlParts.length - 1].split("?")[0];
 
-                if (!filename || filename.indexOf('.') === -1) {
+                if (!filename || filename.indexOf(".") === -1) {
                     // 【核心修改】：无扩展名时
                     // 优先使用转换后的扩展名 newExtension
                     // 如果没有转换 (targetFormat === 'original')，
@@ -353,24 +405,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     // 最终确保有一个扩展名，如果推断也失败了，默认为 .png
-                    if (defaultExt === '.') {
-                        defaultExt = '.jpg';
+                    if (defaultExt === ".") {
+                        defaultExt = ".jpg";
                     }
 
                     filename = `image_${downloadedCount + 1}${defaultExt}`;
                 } else if (isConverted) {
                     // 如果文件名存在且已转换
-                    const parts = filename.split('.');
+                    const parts = filename.split(".");
                     parts.pop(); // 移除原始扩展名
-                    filename = `${parts.join('.')}${newExtension}`;
+                    filename = `${parts.join(".")}${newExtension}`;
                 }
 
                 // 4. 确保文件名是唯一的 (保持不变)
                 const originalFilename = filename;
                 let fileCounter = 1;
                 while (zip.files[filename]) {
-                    const parts = originalFilename.split('.');
-                    const name = parts.slice(0, -1).join('.');
+                    const parts = originalFilename.split(".");
+                    const name = parts.slice(0, -1).join(".");
                     const ext = parts[parts.length - 1];
                     filename = `${name}_${fileCounter++}.${ext}`;
                 }
@@ -379,8 +431,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 zip.file(filename, blob, { binary: true });
                 downloadedCount++;
 
-                displayStatusMessage(`已打包 ${downloadedCount} / ${totalCount} 张图片...`, 500);
-
+                displayStatusMessage(
+                    `已打包 ${downloadedCount} / ${totalCount} 张图片...`,
+                    500
+                );
             } catch (error) {
                 console.error(`跳过下载：${url}`, error);
             }
@@ -391,9 +445,12 @@ document.addEventListener('DOMContentLoaded', () => {
             displayStatusMessage(`正在压缩...`, 10000);
             const zipBlob = await zip.generateAsync({ type: "blob" });
 
-            const zipName = `images_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.zip`;
+            const zipName = `images_${new Date()
+                .toISOString()
+                .slice(0, 10)
+                .replace(/-/g, "")}.zip`;
 
-            const a = document.createElement('a');
+            const a = document.createElement("a");
             a.href = URL.createObjectURL(zipBlob);
             a.download = zipName;
             document.body.appendChild(a);
@@ -410,33 +467,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- 多选复制功能 ---
-    copyButton.addEventListener('click', () => {
+    copyButton.addEventListener("click", () => {
         if (selectedUrls.size === 0) return;
-        const linksToCopy = Array.from(selectedUrls).join('\n');
+        const linksToCopy = Array.from(selectedUrls).join("\n");
 
-        navigator.clipboard.writeText(linksToCopy)
+        navigator.clipboard
+            .writeText(linksToCopy)
             .then(() => {
-                displayStatusMessage(`已复制 ${selectedUrls.size} 个图片链接到剪贴板!`);
+                displayStatusMessage(
+                    `已复制 ${selectedUrls.size} 个图片链接到剪贴板!`
+                );
             })
-            .catch(err => {
-                console.error('复制失败:', err);
-                displayStatusMessage('复制失败。请检查浏览器权限。', 5000);
+            .catch((err) => {
+                console.error("复制失败:", err);
+                displayStatusMessage("复制失败。请检查浏览器权限。", 5000);
             });
     });
 
     // --- 放大器/预览逻辑 ---
     function openPreview(url) {
         previewImage.src = url;
-        previewModal.style.display = 'flex';
+        previewModal.style.display = "flex";
     }
 
-    closeBtn.addEventListener('click', () => {
-        previewModal.style.display = 'none';
+    closeBtn.addEventListener("click", () => {
+        previewModal.style.display = "none";
     });
 
-    previewModal.addEventListener('click', (e) => {
+    previewModal.addEventListener("click", (e) => {
         if (e.target === previewModal) {
-            previewModal.style.display = 'none';
+            previewModal.style.display = "none";
         }
     });
 
