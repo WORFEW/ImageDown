@@ -13,10 +13,10 @@
 ## ⬇️安装
 1. 在 Releases 界面下载最新的 zip 格式的压缩包
 2. 解压 zip 格式的压缩包
-2. 在浏览器中打开扩展管理页面：`chrome://extensions` 或 `edge://extensions`。
-3. 启用右上角的"开发者模式"。
-4. 点击"加载已解压的扩展程序(Load unpacked)",选择本项目目录(包含 `manifest.json` 的文件夹)
-5. 安装后会在工具栏出现扩展图标,点击即可使用
+3. 在浏览器中打开扩展管理页面：`chrome://extensions` 或 `edge://extensions`。
+4. 启用右上角的"开发者模式"。
+5. 点击"加载已解压的扩展程序(Load unpacked)",选择本项目目录(包含 `manifest.json` 的文件夹)
+6. 安装后会在工具栏出现扩展图标,点击即可使用
 
 ## 🔍 界面
 ![界面截图](images/screenshot.png)
