@@ -121,7 +121,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (count === 0) {
             imageListContainer.innerHTML =
-                '<p class="no-images">当前没有捕获到的图片。请启动捕获并刷新页面。</p>';
+                '<p class="no-images">当前没有捕获到的图片,请启动捕获并刷新页面</p>';
             return;
         }
 
