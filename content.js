@@ -14,7 +14,7 @@ function safeSendMessage(message) {
         }
     } catch (e) {
         console.warn(
-            "消息发送失败，可能原因：扩展被禁用/卸载/刷新/重新加载, 或扩展上下文已失效, service worker 已终止"
+            "消息发送失败, 可能原因：(扩展被禁用/卸载/刷新/重新加载, 或扩展上下文已失效, service worker 已终止)"
         );
     }
 }
