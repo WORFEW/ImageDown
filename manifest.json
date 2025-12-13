@@ -4,7 +4,7 @@
     "version": "1.0",
     "description": "图片下载助手",
     "icons": {
-        "128": "images/icon128.png"
+        "128": "icons/icon128.png"
     },
     "permissions": ["storage", "tabs", "downloads", "webRequest"],
     "host_permissions": ["<all_urls>"],
